@@ -7,17 +7,26 @@ use compose_sql::*;
 table! {
     users {
         id -> Integer,
-        first_name -> Text,
-        last_name -> Text,
+        name -> Text,
+        country_id -> Integer,
+    }
+}
+
+table! {
+    countries {
+        id -> Integer,
+        name -> Text,
     }
 }
 
 fn main() {
-    let query = from(users::table)
-        .filter(users::id.eq(123))
-        .filter(users::first_name.eq("Bob"))
-        .filter(users::last_name.eq("Larsen"))
-        .select((users::id, users::first_name, users::last_name));
+    let bobs = users::table.filter(users::name.eq("Bob"));
+    let denmark = countries::table.filter(countries::name.eq("Denmark"));
 
-    println!("{}", query);
+    let query = bobs
+        .join(countries::table.on(countries::id.eq(users::country_id)))
+        .merge(denmark);
+
+    let sql = query.select((users::star, countries::star));
+    println!("{}", sql);
 }

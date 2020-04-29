@@ -8,7 +8,15 @@ macro_rules! table {
         }
     ) => {
         mod $table {
-            use super::*;
+            use $crate::{Integer, Text};
+
+            pub mod dsl {
+                pub use super::table as $table;
+
+                $(
+                    pub use super::$col;
+                )*
+            }
 
             #[derive(Copy, Clone)]
             pub struct table;
@@ -19,9 +27,18 @@ macro_rules! table {
                 }
             }
 
-            impl $crate::SelectDsl<table> for $crate::Query {
-                fn select(self, t: table) -> String {
-                    self.into_sql($crate::Selection::Star($crate::Table::from(t)))
+            impl From<table> for $crate::Query {
+                fn from(t: table) -> Self {
+                    Self::from($crate::Table::from(t))
+                }
+            }
+
+            #[derive(Copy, Clone)]
+            pub struct star;
+
+            impl Into<$crate::Selection> for star {
+                fn into(self) -> $crate::Selection {
+                    $crate::Selection::Star($crate::Table::from(table))
                 }
             }
 
@@ -29,9 +46,9 @@ macro_rules! table {
                 #[derive(Copy, Clone)]
                 pub struct $col;
 
-                impl SelectDsl<$col> for $crate::Query {
-                    fn select(self, t: $col) -> String {
-                        self.into_sql($crate::Selection::Column($crate::Column::from(t)))
+                impl Into<$crate::Selection> for $col {
+                    fn into(self) -> $crate::Selection {
+                        $crate::Selection::Column($crate::Column::from(self))
                     }
                 }
 
@@ -41,15 +58,13 @@ macro_rules! table {
                     }
                 }
 
-                impl From<$col> for $crate::Expr {
-                    fn from(t: $col) -> Self {
-                        $crate::Expr::Column(t.into())
+                impl $crate::IntoExpr<$ty> for $col {
+                    fn into_expr(self) -> $crate::Expr {
+                        $crate::Expr::Column(self.into())
                     }
                 }
 
-                impl $crate::FilterDsl for $col {
-                    type SqlType = $ty;
-                }
+                impl $crate::ExprDsl<$ty> for $col {}
             )*
         }
     };
