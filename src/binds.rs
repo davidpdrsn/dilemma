@@ -42,10 +42,6 @@ impl BindsInternal {
     }
 
     fn push(&mut self, bind: Bind) {
-        if self.vec.len() == self.vec.capacity() {
-            panic!("Binds is out of space (this should never happen)")
-        }
-
         self.vec.push(bind);
     }
 }
