@@ -17,3 +17,5 @@
   - Sub queries
     - From clause
     - Probably else where, if possible
+  - Select expression `SELECT 1 as one`
+  - Select `count(*)`
