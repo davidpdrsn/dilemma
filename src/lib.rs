@@ -1,11 +1,15 @@
 #![forbid(unknown_lints)]
 
+use crate::binds::{BindCount, BindsInternal, CollectBinds};
 use itertools::Itertools;
 use itertools::Position;
 use std::fmt;
 use std::fmt::Write;
 
+mod binds;
 mod macros;
+
+pub use binds::{Bind, Binds};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -13,7 +17,7 @@ pub struct Table {
 }
 
 impl WriteSql for Table {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         write!(f, "\"{}\"", self.name)
     }
 }
@@ -41,7 +45,7 @@ impl Column {
 }
 
 impl WriteSql for Column {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         write!(f, "\"{}\".\"{}\"", self.table, self.name)
     }
 }
@@ -81,32 +85,37 @@ impl Query {
         }
     }
 
-    fn to_sql(&self, selection: Selection) -> String {
+    fn to_sql(&mut self, selection: Selection) -> (String, Binds) {
         let mut f = String::new();
+
+        let mut bind_count = BindCount::new();
 
         let result = (|| -> fmt::Result {
             write!(f, "SELECT ")?;
-            selection.write_sql(&mut f)?;
+            selection.write_sql(&mut f, &mut bind_count)?;
 
             write!(f, " FROM ")?;
-            self.table.write_sql(&mut f)?;
+            self.table.write_sql(&mut f, &mut bind_count)?;
 
             for join in &self.joins {
                 write!(f, " ")?;
-                join.write_sql(&mut f)?;
+                join.write_sql(&mut f, &mut bind_count)?;
             }
 
             if let Some(filter) = &self.filter {
                 write!(f, " WHERE ")?;
-                filter.write_sql(&mut f)?;
+                filter.write_sql(&mut f, &mut bind_count)?;
             }
 
             Ok(())
         })();
 
-        result.unwrap();
+        let mut binds = BindsInternal::with_capacity(bind_count.count());
+        self.collect_binds(&mut binds);
 
-        f
+        result.expect("WriteSql should never fail");
+
+        (f, Binds::from(binds))
     }
 }
 
@@ -121,7 +130,7 @@ impl From<Table> for Query {
 }
 
 pub trait SelectDsl {
-    fn select<T>(self, selectable: T) -> String
+    fn select<T>(self, selectable: T) -> (String, Binds)
     where
         T: Into<Selection>;
 }
@@ -130,7 +139,7 @@ impl<T> SelectDsl for T
 where
     T: Into<Query>,
 {
-    fn select<K>(self, selectable: K) -> String
+    fn select<K>(self, selectable: K) -> (String, Binds)
     where
         K: Into<Selection>,
     {
@@ -218,13 +227,13 @@ pub struct Join {
 }
 
 impl WriteSql for Join {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
-        self.kind.write_sql(f)?;
-        self.table.write_sql(f)?;
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        self.kind.write_sql(f, bind_count)?;
+        self.table.write_sql(f, bind_count)?;
 
         write!(f, " ON ")?;
 
-        self.filter.write_sql(f)?;
+        self.filter.write_sql(f, bind_count)?;
 
         Ok(())
     }
@@ -237,7 +246,7 @@ pub enum JoinKind {
 }
 
 impl WriteSql for JoinKind {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         match self {
             JoinKind::Inner => write!(f, "INNER JOIN ")?,
             JoinKind::Outer => write!(f, "OUTER JOIN ")?,
@@ -276,22 +285,22 @@ pub enum Selection {
 }
 
 impl WriteSql for Selection {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Selection::Star(table) => {
-                table.write_sql(f)?;
+                table.write_sql(f, bind_count)?;
                 write!(f, ".*")
             }
-            Selection::Column(col) => col.write_sql(f),
+            Selection::Column(col) => col.write_sql(f, bind_count),
             Selection::List(cols) => {
                 for item in cols.into_iter().with_position() {
                     match item {
                         Position::First(col) | Position::Middle(col) => {
-                            col.write_sql(f)?;
+                            col.write_sql(f, bind_count)?;
                             write!(f, ", ")?;
                         }
                         Position::Last(col) | Position::Only(col) => {
-                            col.write_sql(f)?;
+                            col.write_sql(f, bind_count)?;
                         }
                     }
                 }
@@ -309,23 +318,23 @@ pub enum Filter {
 }
 
 impl WriteSql for Filter {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Filter::Op { lhs, op, rhs } => {
-                lhs.write_sql(f)?;
-                op.write_sql(f)?;
-                rhs.write_sql(f)?;
+                lhs.write_sql(f, bind_count)?;
+                op.write_sql(f, bind_count)?;
+                rhs.write_sql(f, bind_count)?;
             }
             Filter::And(lhs, rhs) => {
-                lhs.write_sql(f)?;
+                lhs.write_sql(f, bind_count)?;
                 write!(f, " AND ")?;
-                rhs.write_sql(f)?;
+                rhs.write_sql(f, bind_count)?;
             }
             Filter::Or(lhs, rhs) => {
                 write!(f, "(")?;
-                lhs.write_sql(f)?;
+                lhs.write_sql(f, bind_count)?;
                 write!(f, ") OR ")?;
-                rhs.write_sql(f)?;
+                rhs.write_sql(f, bind_count)?;
             }
         }
 
@@ -351,11 +360,11 @@ pub enum Expr {
 }
 
 impl WriteSql for Expr {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Expr::Column(col) => col.write_sql(f),
-            Expr::I32(n) => write!(f, "{}", n),
-            Expr::String(s) => write!(f, "{:?}", s),
+            Expr::Column(col) => col.write_sql(f, bind_count),
+            Expr::I32(n) => bind_count.write_sql(f),
+            Expr::String(s) => bind_count.write_sql(f),
         }
     }
 }
@@ -386,11 +395,11 @@ pub enum BinOp {
 }
 
 trait WriteSql {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result;
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result;
 }
 
 impl WriteSql for BinOp {
-    fn write_sql<W: Write>(&self, f: &mut W) -> fmt::Result {
+    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         match self {
             BinOp::Eq => write!(f, " = "),
         }
@@ -478,102 +487,126 @@ mod test {
 
     #[test]
     fn select_star() {
-        let query = users::table.select(users::star);
+        let (query, mut binds) = users::table.select(users::star);
+
         assert_eq!(query, r#"SELECT "users".* FROM "users""#);
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn select_single_column() {
-        let query = users::table.select(users::id);
+        let (query, mut binds) = users::table.select(users::id);
+
         assert_eq!(query, r#"SELECT "users"."id" FROM "users""#);
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn select_multiple_columns() {
-        let query = users::table.select((users::id, users::star, users::country_id));
+        let (query, mut binds) = users::table.select((users::id, users::star, users::country_id));
 
         assert_eq!(
             query,
             r#"SELECT "users"."id", "users".*, "users"."country_id" FROM "users""#
         );
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn basic_filter() {
-        let query = users::table.filter(users::id.eq(1)).select(users::star);
+        let (query, mut binds) = users::table.filter(users::id.eq(1)).select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE "users"."id" = 1"#
+            r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1"#
         );
+
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn multiple_filters() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .filter(users::id.eq(1))
             .filter(users::name.eq("Bob"))
             .select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE "users"."id" = 1 AND "users"."name" = "Bob""#
+            r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 AND "users"."name" = $2"#
         );
+
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), Some(Bind::String("Bob".to_string())));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn same_filter_twice() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .filter(users::id.eq(1))
             .filter(users::id.eq(1))
             .select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE "users"."id" = 1 AND "users"."id" = 1"#
+            r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 AND "users"."id" = $2"#
         );
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn query_filter_or() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .filter(users::id.eq(1))
             .filter_or(users::id.eq(2))
             .select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE ("users"."id" = 1) OR "users"."id" = 2"#
+            r#"SELECT "users".* FROM "users" WHERE ("users"."id" = $1) OR "users"."id" = $2"#
         );
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), Some(Bind::I32(2)));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn filter_and() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .filter(users::id.eq(1).and(users::id.eq(2)))
             .select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE "users"."id" = 1 AND "users"."id" = 2"#
+            r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 AND "users"."id" = $2"#
         );
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), Some(Bind::I32(2)));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn filter_or() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .filter(users::id.eq(1).or(users::id.eq(2)))
             .select(users::star);
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" WHERE ("users"."id" = 1) OR "users"."id" = 2"#
+            r#"SELECT "users".* FROM "users" WHERE ("users"."id" = $1) OR "users"."id" = $2"#
         );
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
+        assert_eq!(binds.next(), Some(Bind::I32(2)));
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn inner_join() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .inner_join(countries::table.on(countries::id.eq(users::country_id)))
             .select(users::star);
 
@@ -581,11 +614,12 @@ mod test {
             query,
             r#"SELECT "users".* FROM "users" INNER JOIN "countries" ON "countries"."id" = "users"."country_id""#
         );
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn outer_join() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .outer_join(countries::table.on(countries::id.eq(users::country_id)))
             .select(users::star);
 
@@ -593,11 +627,12 @@ mod test {
             query,
             r#"SELECT "users".* FROM "users" OUTER JOIN "countries" ON "countries"."id" = "users"."country_id""#
         );
+        assert_eq!(binds.next(), None);
     }
 
     #[test]
     fn complex_join() {
-        let query = users::table
+        let (query, mut binds) = users::table
             .outer_join(
                 countries::table.on(countries::id.eq(users::country_id).and(users::id.eq(1))),
             )
@@ -605,7 +640,8 @@ mod test {
 
         assert_eq!(
             query,
-            r#"SELECT "users".* FROM "users" OUTER JOIN "countries" ON "countries"."id" = "users"."country_id" AND "users"."id" = 1"#
+            r#"SELECT "users".* FROM "users" OUTER JOIN "countries" ON "countries"."id" = "users"."country_id" AND "users"."id" = $1"#
         );
+        assert_eq!(binds.next(), Some(Bind::I32(1)));
     }
 }
