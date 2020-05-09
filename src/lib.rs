@@ -68,13 +68,15 @@ impl Query {
         self
     }
 
-    pub fn merge(self, other: Query) -> Self {
+    pub fn merge(mut self, other: Query) -> Self {
         let filter = match (self.filter, other.filter) {
             (Some(a), Some(b)) => Some(Filter::And(Box::new(a), Box::new(b))),
             (Some(a), None) => Some(a),
             (None, Some(b)) => Some(b),
             (None, None) => None,
         };
+
+        self.joins.extend(other.joins);
 
         Query {
             table: self.table,
