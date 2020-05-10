@@ -8,8 +8,14 @@ use std::fmt::Write;
 
 mod binds;
 mod macros;
+mod query_dsl;
+mod expr;
+mod sql_types;
 
+pub use sql_types::{Integer, Text};
 pub use binds::{Bind, Binds};
+pub use query_dsl::QueryDsl;
+pub use expr::{Expr, BinOp, IntoExpr, ExprDsl};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -126,96 +132,6 @@ impl From<Table> for Query {
             filter: None,
             joins: Vec::new(),
         }
-    }
-}
-
-pub trait SelectDsl {
-    fn select<T>(self, selectable: T) -> (String, Binds)
-    where
-        T: Into<Selection>;
-}
-
-impl<T> SelectDsl for T
-where
-    T: Into<Query>,
-{
-    fn select<K>(self, selectable: K) -> (String, Binds)
-    where
-        K: Into<Selection>,
-    {
-        self.into().to_sql(selectable.into())
-    }
-}
-
-pub trait FilterDsl {
-    fn filter(self, filter: impl Into<Filter>) -> Query;
-
-    fn filter_or(self, filter: impl Into<Filter>) -> Query;
-}
-
-impl<T> FilterDsl for T
-where
-    T: Into<Query>,
-{
-    fn filter(self, filter: impl Into<Filter>) -> Query {
-        let mut query = self.into();
-
-        query.filter = if let Some(prev_filter) = query.filter.take() {
-            Some(Filter::And(Box::new(prev_filter), Box::new(filter.into())))
-        } else {
-            Some(filter.into())
-        };
-
-        query
-    }
-
-    fn filter_or(self, filter: impl Into<Filter>) -> Query {
-        let mut query = self.into();
-
-        query.filter = if let Some(prev_filter) = query.filter.take() {
-            Some(Filter::Or(Box::new(prev_filter), Box::new(filter.into())))
-        } else {
-            Some(filter.into())
-        };
-
-        query
-    }
-}
-
-pub trait JoinDsl {
-    fn inner_join(self, join: PartialJoin) -> Query;
-
-    fn join(self, join: PartialJoin) -> Query;
-
-    fn outer_join(self, join: PartialJoin) -> Query;
-}
-
-impl<T> JoinDsl for T
-where
-    T: Into<Query>,
-{
-    fn inner_join(self, join: PartialJoin) -> Query {
-        let mut query = self.into();
-        query.joins.push(Join {
-            kind: JoinKind::Inner,
-            table: join.table,
-            filter: join.filter,
-        });
-        query
-    }
-
-    fn join(self, join: PartialJoin) -> Query {
-        self.into().inner_join(join)
-    }
-
-    fn outer_join(self, join: PartialJoin) -> Query {
-        let mut query = self.into();
-        query.joins.push(Join {
-            kind: JoinKind::Outer,
-            table: join.table,
-            filter: join.filter,
-        });
-        query
     }
 }
 
@@ -352,71 +268,8 @@ impl Filter {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Expr {
-    Column(Column),
-    I32(i32),
-    String(String),
-}
-
-impl WriteSql for Expr {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
-        match self {
-            Expr::Column(col) => col.write_sql(f, bind_count),
-            Expr::I32(n) => bind_count.write_sql(f),
-            Expr::String(s) => bind_count.write_sql(f),
-        }
-    }
-}
-
-pub struct Integer;
-
-pub struct Text;
-
-impl IntoExpr<Integer> for i32 {
-    fn into_expr(self) -> Expr {
-        Expr::I32(self)
-    }
-}
-
-impl IntoExpr<Text> for &str {
-    fn into_expr(self) -> Expr {
-        Expr::String(self.to_string())
-    }
-}
-
-pub trait IntoExpr<SqlType> {
-    fn into_expr(self) -> Expr;
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum BinOp {
-    Eq,
-}
-
 trait WriteSql {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result;
-}
-
-impl WriteSql for BinOp {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
-        match self {
-            BinOp::Eq => write!(f, " = "),
-        }
-    }
-}
-
-pub trait ExprDsl<SqlType>: IntoExpr<SqlType> + Sized {
-    fn eq<Rhs>(self, rhs: Rhs) -> Filter
-    where
-        Rhs: IntoExpr<SqlType>,
-    {
-        Filter::Op {
-            lhs: self.into_expr(),
-            op: BinOp::Eq,
-            rhs: rhs.into_expr(),
-        }
-    }
 }
 
 macro_rules! impl_select_dsl {
