@@ -7,7 +7,7 @@
   - Make sure we don't generate warnings about case
 
 - More query methods
-  - Limit
+  - ~~Limit~~
   - Group by
   - Having
   - For update

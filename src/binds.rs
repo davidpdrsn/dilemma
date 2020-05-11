@@ -69,6 +69,7 @@ impl From<BindsInternal> for Binds {
 pub enum Bind {
     String(String),
     I32(i32),
+    U64(u64),
 }
 
 impl CollectBinds for Query {
@@ -76,9 +77,13 @@ impl CollectBinds for Query {
         self.table.collect_binds(binds);
         self.joins.collect_binds(binds);
 
-        self.filter
-            .as_ref()
-            .map(|filter| filter.collect_binds(binds));
+        if let Some(filter) = &self.filter {
+            filter.collect_binds(binds);
+        }
+
+        if let Some(limit) = &self.limit {
+            binds.push(Bind::U64(*limit));
+        }
     }
 }
 

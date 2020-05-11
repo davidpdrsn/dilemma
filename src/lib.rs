@@ -61,6 +61,7 @@ pub struct Query {
     table: Table,
     joins: Vec<Join>,
     filter: Option<Filter>,
+    limit: Option<u64>,
 }
 
 impl Query {
@@ -72,23 +73,6 @@ impl Query {
     pub fn remove_joins(mut self) -> Self {
         self.joins.clear();
         self
-    }
-
-    pub fn merge(mut self, other: Query) -> Self {
-        let filter = match (self.filter, other.filter) {
-            (Some(a), Some(b)) => Some(Filter::And(Box::new(a), Box::new(b))),
-            (Some(a), None) => Some(a),
-            (None, Some(b)) => Some(b),
-            (None, None) => None,
-        };
-
-        self.joins.extend(other.joins);
-
-        Query {
-            table: self.table,
-            filter,
-            joins: self.joins,
-        }
     }
 
     fn to_sql(&mut self, selection: Selection) -> (String, Binds) {
@@ -113,6 +97,11 @@ impl Query {
                 filter.write_sql(&mut f, &mut bind_count)?;
             }
 
+            if let Some(_) = &self.limit {
+                write!(f, " LIMIT ")?;
+                bind_count.write_sql(&mut f)?;
+            }
+
             Ok(())
         })();
 
@@ -131,6 +120,7 @@ impl From<Table> for Query {
             table: table.into(),
             filter: None,
             joins: Vec::new(),
+            limit: None,
         }
     }
 }
