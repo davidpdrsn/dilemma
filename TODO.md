@@ -7,14 +7,21 @@
   - ~~Make sure we don't generate warnings about case~~
 
 - More query methods
-  - ~~Limit~~
-  - ~~Order by~~
-  - ~~Group by~~
-  - ~~Having~~
-  - ~~For update~~
-  - ~~Skip locked~~
-  - Explain
-  - Explain analyze
+  - Select query parts
+      - ~~LIMIT~~
+      - ~~ORDER BY~~
+      - ~~GROUP BY~~
+      - ~~HAVING~~
+      - ~~FOR UPDATE~~
+      - ~~SKIP LOCKED~~
+      - ~~FOR KEY SHARE~~
+      - FOR KEY SHARE
+      - FOR NO KEY UPDATE
+      - FOR SHARE
+      - NOWAIT
+      - OFFSET
+      - EXPLAIN
+      - EXPLAIN ANALYZE
   - Sub queries
     - From clause
     - Probably else where, if possible
