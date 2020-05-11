@@ -19,9 +19,16 @@
       - ~~FOR NO KEY UPDATE~~
       - ~~FOR SHARE~~
       - ~~NOWAIT~~
-      - OFFSET
+      - ~~OFFSET~~
       - EXPLAIN
       - EXPLAIN ANALYZE
+      - ORDER BY [ NULL { FIRST | LAST } ]
+      - DISTINCT
+      - DISTINCT ON
+      - UNION [ ALL | DISTINCT ]
+      - INTERSECT [ ALL | DISTINCT ]
+      - EXCEPT [ ALL | DISTINCT ]
+      - Window functions
   - Sub queries
     - From clause
     - Probably else where, if possible

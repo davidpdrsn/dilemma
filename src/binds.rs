@@ -102,6 +102,10 @@ impl CollectBinds for Query {
             binds.push(Bind::U64(*limit));
         }
 
+        if let Some(offset) = &self.offset {
+            binds.push(Bind::U64(*offset));
+        }
+
         self.row_locking.collect_binds(binds);
     }
 }

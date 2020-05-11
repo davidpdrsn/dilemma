@@ -77,6 +77,7 @@ pub struct Query {
     having: Option<Filter>,
     order: Option<Ordering>,
     limit: Option<u64>,
+    offset: Option<u64>,
     row_locking: RowLocking,
 }
 
@@ -108,6 +109,11 @@ impl Query {
 
     pub fn remove_limit(mut self) -> Self {
         self.limit = None;
+        self
+    }
+
+    pub fn remove_offset(mut self) -> Self {
+        self.offset = None;
         self
     }
 
@@ -183,6 +189,11 @@ impl Query {
                 bind_count.write_sql(&mut f)?;
             }
 
+            if let Some(_) = &self.offset {
+                write!(f, " OFFSET ")?;
+                bind_count.write_sql(&mut f)?;
+            }
+
             self.row_locking.write_sql(&mut f, &mut bind_count)?;
 
             Ok(())
@@ -207,6 +218,7 @@ impl From<Table> for Query {
             having: None,
             order: None,
             limit: None,
+            offset: None,
             row_locking: RowLocking::new(),
         }
     }

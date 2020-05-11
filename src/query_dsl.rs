@@ -35,6 +35,8 @@ pub trait QueryDsl {
 
     fn limit(self, limit: u64) -> Query;
 
+    fn offset(self, offset: u64) -> Query;
+
     fn for_update(self) -> Query;
 
     fn skip_locked(self) -> Query;
@@ -182,6 +184,12 @@ where
         query
     }
 
+    fn offset(self, offset: u64) -> Query {
+        let mut query = self.into();
+        query.offset = Some(offset);
+        query
+    }
+
     fn for_update(self) -> Query {
         let mut query = self.into();
         query.row_locking.for_update = true;
@@ -232,6 +240,7 @@ where
         lhs.joins.extend(rhs.joins);
 
         let limit = rhs.limit.or(lhs.limit);
+        let offset = rhs.offset.or(lhs.offset);
         let order = rhs.order.or(lhs.order);
         let group = rhs.group.or(lhs.group);
         let having = rhs.having.or(lhs.having);
@@ -245,6 +254,7 @@ where
             having,
             order,
             limit,
+            offset,
             row_locking,
         }
     }

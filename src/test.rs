@@ -511,3 +511,12 @@ fn skip_locked() {
     assert_eq!(query, r#"SELECT "users".* FROM "users" SKIP LOCKED"#);
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn offset() {
+    let (query, mut binds) = users::table.offset(10).select(users::star);
+
+    assert_eq!(query, r#"SELECT "users".* FROM "users" OFFSET $1"#);
+    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), None);
+}
