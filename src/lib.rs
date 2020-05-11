@@ -70,18 +70,39 @@ pub struct Query {
     joins: Vec<Join>,
     filter: Option<Filter>,
     group: Option<Grouping>,
+    having: Option<Filter>,
     order: Option<Ordering>,
     limit: Option<u64>,
 }
 
 impl Query {
+    pub fn remove_joins(mut self) -> Self {
+        self.joins.clear();
+        self
+    }
+
     pub fn remove_filters(mut self) -> Self {
         self.filter = None;
         self
     }
 
-    pub fn remove_joins(mut self) -> Self {
-        self.joins.clear();
+    pub fn remove_group_by(mut self) -> Self {
+        self.group = None;
+        self
+    }
+
+    pub fn remove_having(mut self) -> Self {
+        self.having = None;
+        self
+    }
+
+    pub fn remove_order_by(mut self) -> Self {
+        self.order = None;
+        self
+    }
+
+    pub fn remove_limit(mut self) -> Self {
+        self.limit = None;
         self
     }
 
@@ -112,6 +133,11 @@ impl Query {
                 group.write_sql(&mut f, &mut bind_count)?;
             }
 
+            if let Some(having) = &self.having {
+                write!(f, " HAVING ")?;
+                having.write_sql(&mut f, &mut bind_count)?;
+            }
+
             if let Some(order) = &self.order {
                 write!(f, " ORDER BY ")?;
                 order.write_sql(&mut f, &mut bind_count)?;
@@ -140,8 +166,9 @@ impl From<Table> for Query {
             table: table.into(),
             filter: None,
             joins: Vec::new(),
-            order: None,
             group: None,
+            having: None,
+            order: None,
             limit: None,
         }
     }

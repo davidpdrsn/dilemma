@@ -436,3 +436,62 @@ fn add_grouping() {
     );
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn having() {
+    let (query, mut binds) = users::table.having(users::id.eq(1)).select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" HAVING "users"."id" = $1"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn replace_having() {
+    let (query, mut binds) = users::table
+        .having(users::id.eq(1))
+        .having(users::id.eq(2))
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" HAVING "users"."id" = $1"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(2)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn add_and_having() {
+    let (query, mut binds) = users::table
+        .having(users::id.eq(1))
+        .and_having(users::id.eq(2))
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" HAVING "users"."id" = $1 AND "users"."id" = $2"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(2)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn add_or_having() {
+    let (query, mut binds) = users::table
+        .having(users::id.eq(1))
+        .or_having(users::id.eq(2))
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" HAVING ("users"."id" = $1) OR "users"."id" = $2"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(2)));
+    assert_eq!(binds.next(), None);
+}

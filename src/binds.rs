@@ -1,4 +1,5 @@
 use crate::ordering::Ordering;
+use crate::grouping::Grouping;
 use crate::{Expr, Filter, Join, Query, Table};
 use std::fmt::{self, Write};
 use std::iter::IntoIterator;
@@ -84,6 +85,14 @@ impl CollectBinds for Query {
             filter.collect_binds(binds);
         }
 
+        if let Some(group) = &self.group {
+            group.collect_binds(binds);
+        }
+
+        if let Some(having) = &self.having {
+            having.collect_binds(binds);
+        }
+
         if let Some(order) = &self.order {
             order.collect_binds(binds);
         }
@@ -143,5 +152,9 @@ impl CollectBinds for Expr {
 }
 
 impl CollectBinds for Ordering {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
+}
+
+impl CollectBinds for Grouping {
     fn collect_binds(&self, _: &mut BindsInternal) {}
 }

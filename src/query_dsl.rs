@@ -21,6 +21,12 @@ pub trait QueryDsl {
 
     fn then_group_by(self, grouping: impl Into<Grouping>) -> Query;
 
+    fn having(self, having: impl Into<Filter>) -> Query;
+
+    fn and_having(self, having: impl Into<Filter>) -> Query;
+
+    fn or_having(self, having: impl Into<Filter>) -> Query;
+
     fn order(self, ordering: impl Into<Ordering>) -> Query;
 
     fn order_by(self, ordering: impl Into<Ordering>) -> Query;
@@ -107,6 +113,34 @@ where
         query
     }
 
+    fn having(self, having: impl Into<Filter>) -> Query {
+        let mut query = self.into();
+        query.having = Some(having.into());
+        query
+    }
+
+    fn and_having(self, having: impl Into<Filter>) -> Query {
+        let mut query = self.into();
+        let new_having = if let Some(prev_having) = query.having.take() {
+            prev_having.and(having.into())
+        } else {
+            having.into()
+        };
+        query.having = Some(new_having);
+        query
+    }
+
+    fn or_having(self, having: impl Into<Filter>) -> Query {
+        let mut query = self.into();
+        let new_having = if let Some(prev_having) = query.having.take() {
+            prev_having.or(having.into())
+        } else {
+            having.into()
+        };
+        query.having = Some(new_having);
+        query
+    }
+
     fn order(self, order: impl Into<Ordering>) -> Query {
         self.order_by(order)
     }
@@ -152,13 +186,15 @@ where
         let limit = rhs.limit.or(lhs.limit);
         let order = rhs.order.or(lhs.order);
         let group = rhs.group.or(lhs.group);
+        let having = rhs.having.or(lhs.having);
 
         Query {
             table: lhs.table,
             filter,
             joins: lhs.joins,
-            order,
             group,
+            having,
+            order,
             limit,
         }
     }

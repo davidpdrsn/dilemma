@@ -10,7 +10,7 @@
   - ~~Limit~~
   - ~~Order by~~
   - ~~Group by~~
-  - Having
+  - ~~Having~~
   - For update
   - Skip locked
   - Explain
@@ -27,3 +27,6 @@
 - API
   - Make `Filter` a struct with private internals
   - Make `Selection` a struct with private internals
+  - Merge SQL generation and collecting bind params. Currently we have ensure
+    we generate SQL and collect binds in the same order. Getting the next bind
+    number should require setting the bind param value
