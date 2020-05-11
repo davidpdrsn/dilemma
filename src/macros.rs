@@ -69,8 +69,6 @@ macro_rules! table {
                         $crate::Expr::Column(self.into())
                     }
                 }
-
-                impl $crate::ExprDsl<$ty> for $col {}
             )*
         }
     };

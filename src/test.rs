@@ -273,3 +273,23 @@ fn merge_with_table() {
 
     users::table.merge(users::table);
 }
+
+#[test]
+fn constant_expression_i32() {
+    let (query, mut binds) = users::table.filter(1.eq(2)).select(users::star);
+
+    assert_eq!(query, r#"SELECT "users".* FROM "users" WHERE $1 = $2"#);
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(2)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn constant_expression_string() {
+    let (query, mut binds) = users::table.filter(ExprDsl::eq("foo", "bar")).select(users::star);
+
+    assert_eq!(query, r#"SELECT "users".* FROM "users" WHERE $1 = $2"#);
+    assert_eq!(binds.next(), Some(Bind::String("foo".to_string())));
+    assert_eq!(binds.next(), Some(Bind::String("bar".to_string())));
+    assert_eq!(binds.next(), None);
+}

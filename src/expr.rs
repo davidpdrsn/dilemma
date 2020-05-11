@@ -3,7 +3,16 @@ use crate::sql_types::{Integer, Text};
 use crate::{Column, Filter, WriteSql};
 use std::fmt::{self, Write};
 
-pub trait ExprDsl<SqlType>: IntoExpr<SqlType> + Sized {
+pub trait ExprDsl<SqlType>: Sized {
+    fn eq<Rhs>(self, rhs: Rhs) -> Filter
+    where
+        Rhs: IntoExpr<SqlType>;
+}
+
+impl<T, SqlType> ExprDsl<SqlType> for T
+where
+    T: IntoExpr<SqlType>,
+{
     fn eq<Rhs>(self, rhs: Rhs) -> Filter
     where
         Rhs: IntoExpr<SqlType>,
