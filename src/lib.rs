@@ -1,19 +1,21 @@
 #![forbid(unknown_lints)]
 
 use binds::{BindCount, BindsInternal, CollectBinds};
-use write_sql::WriteSql;
+use row_locking::RowLocking;
 use std::fmt;
 use std::fmt::Write;
+use write_sql::WriteSql;
 
 mod binds;
 mod expr;
 mod filter;
 mod grouping;
+mod join;
 mod macros;
 mod ordering;
 mod query_dsl;
+mod row_locking;
 mod selection;
-mod join;
 mod write_sql;
 
 pub mod sql_types;
@@ -22,10 +24,10 @@ pub use binds::{Bind, Binds};
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
 pub use grouping::Grouping;
+pub use join::{Join, JoinKind, JoinOnDsl, PartialJoin};
 pub use ordering::{Ordering, OrderingDsl};
 pub use query_dsl::QueryDsl;
 pub use selection::Selection;
-pub use join::{Join, JoinKind, PartialJoin, JoinOnDsl};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -75,8 +77,7 @@ pub struct Query {
     having: Option<Filter>,
     order: Option<Ordering>,
     limit: Option<u64>,
-    for_update: bool,
-    skip_locked: bool,
+    row_locking: RowLocking,
 }
 
 impl Query {
@@ -111,12 +112,32 @@ impl Query {
     }
 
     pub fn remove_for_update(mut self) -> Self {
-        self.for_update = false;
+        self.row_locking.for_update = false;
         self
     }
 
     pub fn remove_skip_locked(mut self) -> Self {
-        self.skip_locked = false;
+        self.row_locking.skip_locked = false;
+        self
+    }
+
+    pub fn remove_for_key_share(mut self) -> Self {
+        self.row_locking.for_key_share = false;
+        self
+    }
+
+    pub fn remove_for_no_key_update(mut self) -> Self {
+        self.row_locking.for_no_key_update = false;
+        self
+    }
+
+    pub fn remove_for_share(mut self) -> Self {
+        self.row_locking.for_share = false;
+        self
+    }
+
+    pub fn remove_no_wait(mut self) -> Self {
+        self.row_locking.no_wait = false;
         self
     }
 
@@ -162,13 +183,7 @@ impl Query {
                 bind_count.write_sql(&mut f)?;
             }
 
-            if self.for_update {
-                write!(f, " FOR UPDATE")?;
-            }
-
-            if self.skip_locked {
-                write!(f, " SKIP LOCKED")?;
-            }
+            self.row_locking.write_sql(&mut f, &mut bind_count)?;
 
             Ok(())
         })();
@@ -192,8 +207,7 @@ impl From<Table> for Query {
             having: None,
             order: None,
             limit: None,
-            for_update: false,
-            skip_locked: false,
+            row_locking: RowLocking::new(),
         }
     }
 }

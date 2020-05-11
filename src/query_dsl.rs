@@ -39,6 +39,14 @@ pub trait QueryDsl {
 
     fn skip_locked(self) -> Query;
 
+    fn for_key_share(self) -> Query;
+
+    fn for_no_key_update(self) -> Query;
+
+    fn for_share(self) -> Query;
+
+    fn no_wait(self) -> Query;
+
     fn merge(self, other: impl Into<Query>) -> Query;
 }
 
@@ -176,13 +184,37 @@ where
 
     fn for_update(self) -> Query {
         let mut query = self.into();
-        query.for_update = true;
+        query.row_locking.for_update = true;
         query
     }
 
     fn skip_locked(self) -> Query {
         let mut query = self.into();
-        query.skip_locked = true;
+        query.row_locking.skip_locked = true;
+        query
+    }
+
+    fn for_key_share(self) -> Query {
+        let mut query = self.into();
+        query.row_locking.for_key_share = true;
+        query
+    }
+
+    fn for_no_key_update(self) -> Query {
+        let mut query = self.into();
+        query.row_locking.for_no_key_update = true;
+        query
+    }
+
+    fn for_share(self) -> Query {
+        let mut query = self.into();
+        query.row_locking.for_share = true;
+        query
+    }
+
+    fn no_wait(self) -> Query {
+        let mut query = self.into();
+        query.row_locking.no_wait = true;
         query
     }
 
@@ -203,8 +235,7 @@ where
         let order = rhs.order.or(lhs.order);
         let group = rhs.group.or(lhs.group);
         let having = rhs.having.or(lhs.having);
-        let for_update = lhs.for_update || rhs.for_update;
-        let skip_locked = lhs.skip_locked || rhs.skip_locked;
+        let row_locking = lhs.row_locking.or(rhs.row_locking);
 
         Query {
             table: lhs.table,
@@ -214,8 +245,7 @@ where
             having,
             order,
             limit,
-            for_update,
-            skip_locked,
+            row_locking,
         }
     }
 }

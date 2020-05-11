@@ -1,5 +1,6 @@
-use crate::ordering::Ordering;
 use crate::grouping::Grouping;
+use crate::ordering::Ordering;
+use crate::row_locking::RowLocking;
 use crate::{Expr, Filter, Join, Query, Table};
 use std::fmt::{self, Write};
 use std::iter::IntoIterator;
@@ -100,6 +101,8 @@ impl CollectBinds for Query {
         if let Some(limit) = &self.limit {
             binds.push(Bind::U64(*limit));
         }
+
+        self.row_locking.collect_binds(binds);
     }
 }
 
@@ -156,5 +159,9 @@ impl CollectBinds for Ordering {
 }
 
 impl CollectBinds for Grouping {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
+}
+
+impl CollectBinds for RowLocking {
     fn collect_binds(&self, _: &mut BindsInternal) {}
 }

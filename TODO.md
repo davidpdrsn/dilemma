@@ -15,10 +15,10 @@
       - ~~FOR UPDATE~~
       - ~~SKIP LOCKED~~
       - ~~FOR KEY SHARE~~
-      - FOR KEY SHARE
-      - FOR NO KEY UPDATE
-      - FOR SHARE
-      - NOWAIT
+      - ~~FOR KEY SHARE~~
+      - ~~FOR NO KEY UPDATE~~
+      - ~~FOR SHARE~~
+      - ~~NOWAIT~~
       - OFFSET
       - EXPLAIN
       - EXPLAIN ANALYZE
