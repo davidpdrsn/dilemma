@@ -384,3 +384,55 @@ fn adding_overriding_ordering() {
     );
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn group_by() {
+    let (query, mut binds) = users::table.group_by(users::id).select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" GROUP BY "users"."id""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn group_by_multiple() {
+    let (query, mut binds) = users::table
+        .group_by((users::id, users::name))
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" GROUP BY "users"."id", "users"."name""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn replace_grouping() {
+    let (query, mut binds) = users::table
+        .group_by(users::id)
+        .group_by(users::name)
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" GROUP BY "users"."name""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn add_grouping() {
+    let (query, mut binds) = users::table
+        .group_by(users::id)
+        .then_group_by(users::name)
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" GROUP BY "users"."id", "users"."name""#
+    );
+    assert_eq!(binds.next(), None);
+}

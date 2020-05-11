@@ -1,4 +1,4 @@
-use crate::query_dsl::Ordering;
+use crate::ordering::Ordering;
 use crate::{Expr, Filter, Join, Query, Table};
 use std::fmt::{self, Write};
 use std::iter::IntoIterator;

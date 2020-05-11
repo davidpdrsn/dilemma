@@ -9,7 +9,7 @@
 - More query methods
   - ~~Limit~~
   - ~~Order by~~
-  - Group by
+  - ~~Group by~~
   - Having
   - For update
   - Skip locked
