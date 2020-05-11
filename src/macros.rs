@@ -52,9 +52,9 @@ macro_rules! table {
                 #[derive(Copy, Clone)]
                 pub struct $col;
 
-                impl Into<$crate::Selection> for $col {
-                    fn into(self) -> $crate::Selection {
-                        $crate::Selection::Column($crate::Column::from(self))
+                impl From<$col> for $crate::Selection {
+                    fn from(col: $col) -> $crate::Selection {
+                        $crate::Selection::Column($crate::Column::from(col))
                     }
                 }
 
