@@ -1,6 +1,7 @@
 #![forbid(unknown_lints)]
 
-use crate::binds::{BindCount, BindsInternal, CollectBinds};
+use binds::{BindCount, BindsInternal, CollectBinds};
+use write_sql::WriteSql;
 use std::fmt;
 use std::fmt::Write;
 
@@ -13,6 +14,7 @@ mod ordering;
 mod query_dsl;
 mod selection;
 mod join;
+mod write_sql;
 
 pub mod sql_types;
 
@@ -73,6 +75,8 @@ pub struct Query {
     having: Option<Filter>,
     order: Option<Ordering>,
     limit: Option<u64>,
+    for_update: bool,
+    skip_locked: bool,
 }
 
 impl Query {
@@ -103,6 +107,16 @@ impl Query {
 
     pub fn remove_limit(mut self) -> Self {
         self.limit = None;
+        self
+    }
+
+    pub fn remove_for_update(mut self) -> Self {
+        self.for_update = false;
+        self
+    }
+
+    pub fn remove_skip_locked(mut self) -> Self {
+        self.skip_locked = false;
         self
     }
 
@@ -148,6 +162,14 @@ impl Query {
                 bind_count.write_sql(&mut f)?;
             }
 
+            if self.for_update {
+                write!(f, " FOR UPDATE")?;
+            }
+
+            if self.skip_locked {
+                write!(f, " SKIP LOCKED")?;
+            }
+
             Ok(())
         })();
 
@@ -170,12 +192,10 @@ impl From<Table> for Query {
             having: None,
             order: None,
             limit: None,
+            for_update: false,
+            skip_locked: false,
         }
     }
-}
-
-trait WriteSql {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result;
 }
 
 #[cfg(test)]

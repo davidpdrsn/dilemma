@@ -35,6 +35,10 @@ pub trait QueryDsl {
 
     fn limit(self, limit: u64) -> Query;
 
+    fn for_update(self) -> Query;
+
+    fn skip_locked(self) -> Query;
+
     fn merge(self, other: impl Into<Query>) -> Query;
 }
 
@@ -170,6 +174,18 @@ where
         query
     }
 
+    fn for_update(self) -> Query {
+        let mut query = self.into();
+        query.for_update = true;
+        query
+    }
+
+    fn skip_locked(self) -> Query {
+        let mut query = self.into();
+        query.skip_locked = true;
+        query
+    }
+
     fn merge(self, other: impl Into<Query>) -> Query {
         let mut lhs = self.into();
         let rhs = other.into();
@@ -187,6 +203,8 @@ where
         let order = rhs.order.or(lhs.order);
         let group = rhs.group.or(lhs.group);
         let having = rhs.having.or(lhs.having);
+        let for_update = lhs.for_update || rhs.for_update;
+        let skip_locked = lhs.skip_locked || rhs.skip_locked;
 
         Query {
             table: lhs.table,
@@ -196,6 +214,8 @@ where
             having,
             order,
             limit,
+            for_update,
+            skip_locked,
         }
     }
 }

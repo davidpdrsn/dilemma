@@ -495,3 +495,19 @@ fn add_or_having() {
     assert_eq!(binds.next(), Some(Bind::I32(2)));
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn for_update() {
+    let (query, mut binds) = users::table.for_update().select(users::star);
+
+    assert_eq!(query, r#"SELECT "users".* FROM "users" FOR UPDATE"#);
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn skip_locked() {
+    let (query, mut binds) = users::table.skip_locked().select(users::star);
+
+    assert_eq!(query, r#"SELECT "users".* FROM "users" SKIP LOCKED"#);
+    assert_eq!(binds.next(), None);
+}
