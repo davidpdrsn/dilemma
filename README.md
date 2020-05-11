@@ -1,8 +1,8 @@
 # dilemma
 
-This is an experimental SQL query builder that favors making SQL queries reusable and composable over guaranteeing type safe queries at compile time. I have found that the advanced type system techniques required to catch invalid queries at compile often hurts usability and makes it difficult to compose and reuse queries. Using raw SQL everywhere is great for usability but doesn't make it possible to compose queries so you end up repeating yourself a lot.
+This is an experimental SQL query builder that favors making SQL queries reusable and composable over guaranteeing type safe queries at compile time. I have found that the advanced type system techniques required to catch invalid queries at compile time often hurts usability and makes it difficult to compose and reuse queries. Using raw SQL everywhere is great for usability but doesn't make it possible to compose queries so you end up repeating yourself a lot.
 
-Its mean as an addition to the ORM/query builder you already use. Running the actual SQL queries is outside the scope of the this project.
+Its meant as an addition to the ORM/query builder you already use. Running the actual SQL queries is outside the scope of the this project.
 
 It goes without saying that this is very much a proof-of-concept and shouldn't be used for anything serious.
 
