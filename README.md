@@ -1,6 +1,4 @@
-# compose-sql
-
-(real name pending...)
+# dilemma
 
 This is an experimental SQL query builder that favors making SQL queries reusable and composable over guaranteeing type safe queries at compile time. I have found that the advanced type system techniques required to catch invalid queries at compile often hurts usability and makes it difficult to compose and reuse queries. Using raw SQL everywhere is great for usability but doesn't make it possible to compose queries so you end up repeating yourself a lot.
 

@@ -1,41 +1,34 @@
 # TODO
 
-- Tests
-  - ~~`Query::merge` tests~~
-
-- Macros
-  - ~~Make sure we don't generate warnings about case~~
-
 - More query methods
   - Select query parts
-      - ~~LIMIT~~
-      - ~~ORDER BY~~
-      - ~~GROUP BY~~
-      - ~~HAVING~~
-      - ~~FOR UPDATE~~
-      - ~~SKIP LOCKED~~
-      - ~~FOR KEY SHARE~~
-      - ~~FOR KEY SHARE~~
-      - ~~FOR NO KEY UPDATE~~
-      - ~~FOR SHARE~~
-      - ~~NOWAIT~~
-      - ~~OFFSET~~
-      - EXPLAIN
-      - EXPLAIN ANALYZE
-      - ORDER BY [ NULL { FIRST | LAST } ]
-      - DISTINCT
-      - DISTINCT ON
-      - UNION [ ALL | DISTINCT ]
-      - INTERSECT [ ALL | DISTINCT ]
-      - EXCEPT [ ALL | DISTINCT ]
-      - Window functions
+    - EXPLAIN
+    - EXPLAIN ANALYZE
+    - ORDER BY [ NULL { FIRST | LAST } ]
+    - DISTINCT
+    - DISTINCT ON
+    - UNION [ ALL | DISTINCT ]
+    - INTERSECT [ ALL | DISTINCT ]
+    - EXCEPT [ ALL | DISTINCT ]
+    - Window functions
+  - Expression methods
+    - between
+    - eq any (in)
+    - ge
+    - gt
+    - is not null
+    - is null
+    - le
+    - lt
+    - ne
+    - ne all (not in)
+    - not between
   - Sub queries
     - From clause
     - Probably else where, if possible
   - Select expression `SELECT 1 as one`
   - Select `count(*)`
   - Raw SQL nodes
-  - `Query::remove_*` methods for each field
   - Add all methods from https://docs.rs/diesel/1.4.4/diesel/query_dsl/trait.QueryDsl.html
 
 - API
