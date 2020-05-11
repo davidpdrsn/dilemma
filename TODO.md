@@ -8,6 +8,7 @@
 
 - More query methods
   - ~~Limit~~
+  - ~~Order by~~
   - Group by
   - Having
   - For update

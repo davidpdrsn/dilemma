@@ -286,10 +286,101 @@ fn constant_expression_i32() {
 
 #[test]
 fn constant_expression_string() {
-    let (query, mut binds) = users::table.filter(ExprDsl::eq("foo", "bar")).select(users::star);
+    let (query, mut binds) = users::table
+        .filter(ExprDsl::eq("foo", "bar"))
+        .select(users::star);
 
     assert_eq!(query, r#"SELECT "users".* FROM "users" WHERE $1 = $2"#);
     assert_eq!(binds.next(), Some(Bind::String("foo".to_string())));
     assert_eq!(binds.next(), Some(Bind::String("bar".to_string())));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order() {
+    let (query, mut binds) = users::table.order_by(users::id).select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_asc() {
+    let (query, mut binds) = users::table.order_by(users::id.asc()).select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" ASC"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_desc() {
+    let (query, mut binds) = users::table.order_by(users::id.desc()).select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" DESC"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_and_limit() {
+    let (query, mut binds) = users::table
+        .limit(10)
+        .order_by(users::id.desc())
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" DESC LIMIT $1"#
+    );
+    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn multiple_orderings() {
+    let (query, mut binds) = users::table
+        .order_by((users::id, users::name, users::name))
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id", "users"."name", "users"."name""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn overriding_ordering() {
+    let (query, mut binds) = users::table
+        .order_by((users::id, users::name, users::name))
+        .order_by(users::id)
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn adding_overriding_ordering() {
+    let (query, mut binds) = users::table
+        .order_by(users::id)
+        .then_order_by(users::name)
+        .select(users::star);
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id", "users"."name""#
+    );
     assert_eq!(binds.next(), None);
 }

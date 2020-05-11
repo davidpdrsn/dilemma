@@ -1,7 +1,8 @@
+use crate::query_dsl::Ordering;
 use crate::{Expr, Filter, Join, Query, Table};
-use std::vec::IntoIter;
 use std::fmt::{self, Write};
 use std::iter::IntoIterator;
+use std::vec::IntoIter;
 
 pub struct BindCount(usize);
 
@@ -61,7 +62,9 @@ impl Iterator for Binds {
 
 impl From<BindsInternal> for Binds {
     fn from(internal: BindsInternal) -> Self {
-        Binds { iter: internal.vec.into_iter() }
+        Binds {
+            iter: internal.vec.into_iter(),
+        }
     }
 }
 
@@ -79,6 +82,10 @@ impl CollectBinds for Query {
 
         if let Some(filter) = &self.filter {
             filter.collect_binds(binds);
+        }
+
+        if let Some(order) = &self.order {
+            order.collect_binds(binds);
         }
 
         if let Some(limit) = &self.limit {
@@ -133,4 +140,8 @@ impl CollectBinds for Expr {
             Expr::String(value) => binds.push(Bind::String(value.clone())),
         }
     }
+}
+
+impl CollectBinds for Ordering {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
 }

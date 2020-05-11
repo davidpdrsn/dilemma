@@ -64,7 +64,9 @@ macro_rules! table {
                     }
                 }
 
-                impl $crate::IntoExpr<$ty> for $col {
+                impl $crate::IntoExpr for $col {
+                    type SqlType = $ty;
+
                     fn into_expr(self) -> $crate::Expr {
                         $crate::Expr::Column(self.into())
                     }

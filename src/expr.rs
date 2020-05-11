@@ -6,16 +6,16 @@ use std::fmt::{self, Write};
 pub trait ExprDsl<SqlType>: Sized {
     fn eq<Rhs>(self, rhs: Rhs) -> Filter
     where
-        Rhs: IntoExpr<SqlType>;
+        Rhs: IntoExpr<SqlType = SqlType>;
 }
 
 impl<T, SqlType> ExprDsl<SqlType> for T
 where
-    T: IntoExpr<SqlType>,
+    T: IntoExpr<SqlType = SqlType>,
 {
     fn eq<Rhs>(self, rhs: Rhs) -> Filter
     where
-        Rhs: IntoExpr<SqlType>,
+        Rhs: IntoExpr<SqlType = SqlType>,
     {
         Filter::Op {
             lhs: self.into_expr(),
@@ -25,19 +25,25 @@ where
     }
 }
 
-impl IntoExpr<Integer> for i32 {
+impl IntoExpr for i32 {
+    type SqlType = Integer;
+
     fn into_expr(self) -> Expr {
         Expr::I32(self)
     }
 }
 
-impl IntoExpr<Text> for &str {
+impl IntoExpr for &str {
+    type SqlType = Text;
+
     fn into_expr(self) -> Expr {
         Expr::String(self.to_string())
     }
 }
 
-pub trait IntoExpr<SqlType> {
+pub trait IntoExpr {
+    type SqlType;
+
     fn into_expr(self) -> Expr;
 }
 

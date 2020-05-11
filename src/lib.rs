@@ -7,14 +7,14 @@ use std::fmt;
 use std::fmt::Write;
 
 mod binds;
+mod expr;
 mod macros;
 mod query_dsl;
-mod expr;
 pub mod sql_types;
 
 pub use binds::{Bind, Binds};
-pub use query_dsl::QueryDsl;
-pub use expr::{Expr, BinOp, IntoExpr, ExprDsl};
+pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
+pub use query_dsl::{Ordering, OrderingDsl, QueryDsl};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -60,6 +60,7 @@ pub struct Query {
     table: Table,
     joins: Vec<Join>,
     filter: Option<Filter>,
+    order: Option<Ordering>,
     limit: Option<u64>,
 }
 
@@ -96,6 +97,11 @@ impl Query {
                 filter.write_sql(&mut f, &mut bind_count)?;
             }
 
+            if let Some(order) = &self.order {
+                write!(f, " ORDER BY ")?;
+                order.write_sql(&mut f, &mut bind_count)?;
+            }
+
             if let Some(_) = &self.limit {
                 write!(f, " LIMIT ")?;
                 bind_count.write_sql(&mut f)?;
@@ -119,6 +125,7 @@ impl From<Table> for Query {
             table: table.into(),
             filter: None,
             joins: Vec::new(),
+            order: None,
             limit: None,
         }
     }
