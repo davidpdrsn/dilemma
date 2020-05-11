@@ -10,9 +10,8 @@ mod binds;
 mod macros;
 mod query_dsl;
 mod expr;
-mod sql_types;
+pub mod sql_types;
 
-pub use sql_types::{Integer, Text};
 pub use binds::{Bind, Binds};
 pub use query_dsl::QueryDsl;
 pub use expr::{Expr, BinOp, IntoExpr, ExprDsl};

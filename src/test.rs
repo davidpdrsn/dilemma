@@ -90,10 +90,10 @@ fn same_filter_twice() {
 }
 
 #[test]
-fn query_filter_or() {
+fn query_or_filter() {
     let (query, mut binds) = users::table
         .filter(users::id.eq(1))
-        .filter_or(users::id.eq(2))
+        .or_filter(users::id.eq(2))
         .select(users::star);
 
     assert_eq!(
@@ -121,7 +121,7 @@ fn filter_and() {
 }
 
 #[test]
-fn filter_or() {
+fn or_filter() {
     let (query, mut binds) = users::table
         .filter(users::id.eq(1).or(users::id.eq(2)))
         .select(users::star);

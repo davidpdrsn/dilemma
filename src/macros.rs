@@ -14,7 +14,7 @@ macro_rules! table {
             non_camel_case_types,
         )]
         mod $table {
-            use $crate::{Integer, Text};
+            use $crate::sql_types::{Integer, Text};
 
             pub mod dsl {
                 pub use super::table as $table;

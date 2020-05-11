@@ -6,7 +6,7 @@ pub trait QueryDsl {
 
     fn filter(self, filter: impl Into<Filter>) -> Query;
 
-    fn filter_or(self, filter: impl Into<Filter>) -> Query;
+    fn or_filter(self, filter: impl Into<Filter>) -> Query;
 
     fn join(self, join: PartialJoin) -> Query;
 
@@ -39,7 +39,7 @@ where
         query
     }
 
-    fn filter_or(self, filter: impl Into<Filter>) -> Query {
+    fn or_filter(self, filter: impl Into<Filter>) -> Query {
         let mut query = self.into();
 
         query.filter = if let Some(prev_filter) = query.filter.take() {
