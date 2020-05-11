@@ -1,10 +1,10 @@
 # TODO
 
 - Tests
-  - `Query::merge` tests
+  - ~~`Query::merge` tests~~
 
 - Macros
-  - Make sure we don't generate warnings about case
+  - ~~Make sure we don't generate warnings about case~~
 
 - More query methods
   - ~~Limit~~
