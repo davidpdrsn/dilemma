@@ -7,6 +7,12 @@ macro_rules! table {
             )*
         }
     ) => {
+        #[allow(
+            unused_variables,
+            dead_code,
+            missing_docs,
+            non_camel_case_types,
+        )]
         mod $table {
             use $crate::{Integer, Text};
 
