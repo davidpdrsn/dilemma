@@ -33,7 +33,7 @@ macro_rules! table {
                 }
             }
 
-            impl From<table> for $crate::Query {
+            impl From<table> for $crate::Query<table> {
                 fn from(t: table) -> Self {
                     Self::from($crate::Table::from(t))
                 }

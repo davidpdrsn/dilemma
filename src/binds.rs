@@ -77,7 +77,7 @@ pub enum Bind {
     U64(u64),
 }
 
-impl CollectBinds for Query {
+impl<T> CollectBinds for Query<T> {
     fn collect_binds(&self, binds: &mut BindsInternal) {
         self.table.collect_binds(binds);
         self.joins.collect_binds(binds);
@@ -132,7 +132,7 @@ impl CollectBinds for Join {
 impl CollectBinds for Filter {
     fn collect_binds(&self, binds: &mut BindsInternal) {
         match self {
-            Filter::Op { lhs, op: _, rhs } => {
+            Filter::BinOp { lhs, op: _, rhs } => {
                 lhs.collect_binds(binds);
                 rhs.collect_binds(binds);
             }

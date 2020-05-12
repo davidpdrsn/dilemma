@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 itertools = "0.9.0"
+
+[dev-dependencies]
+extend = "0.1.1"

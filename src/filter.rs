@@ -4,7 +4,7 @@ use std::fmt::{self, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Filter {
-    Op { lhs: Expr, op: BinOp, rhs: Expr },
+    BinOp { lhs: Expr, op: BinOp, rhs: Expr },
     And(Box<Filter>, Box<Filter>),
     Or(Box<Filter>, Box<Filter>),
 }
@@ -12,7 +12,7 @@ pub enum Filter {
 impl WriteSql for Filter {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Filter::Op { lhs, op, rhs } => {
+            Filter::BinOp { lhs, op, rhs } => {
                 lhs.write_sql(f, bind_count)?;
                 op.write_sql(f, bind_count)?;
                 rhs.write_sql(f, bind_count)?;
