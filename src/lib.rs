@@ -243,5 +243,9 @@ impl<T> QueryWithSelection<T> {
     }
 }
 
+pub fn star() -> Selection {
+    Selection::Star
+}
+
 #[cfg(test)]
 mod test;

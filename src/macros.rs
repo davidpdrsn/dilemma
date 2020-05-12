@@ -44,7 +44,7 @@ macro_rules! table {
 
             impl Into<$crate::Selection> for star {
                 fn into(self) -> $crate::Selection {
-                    $crate::Selection::Star($crate::Table::from(table))
+                    $crate::Selection::TableStar($crate::Table::from(table))
                 }
             }
 

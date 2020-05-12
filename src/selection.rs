@@ -1,12 +1,13 @@
-use crate::{Table, Column, WriteSql};
 use crate::binds::BindCount;
-use std::fmt::{self, Write};
+use crate::{Column, Table, WriteSql};
 use itertools::Itertools;
 use itertools::Position;
+use std::fmt::{self, Write};
 
 #[derive(Debug)]
 pub enum Selection {
-    Star(Table),
+    TableStar(Table),
+    Star,
     Column(Column),
     List(Vec<Selection>),
 }
@@ -14,10 +15,11 @@ pub enum Selection {
 impl WriteSql for Selection {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Selection::Star(table) => {
+            Selection::TableStar(table) => {
                 table.write_sql(f, bind_count)?;
                 write!(f, ".*")
             }
+            Selection::Star => write!(f, "*"),
             Selection::Column(col) => col.write_sql(f, bind_count),
             Selection::List(cols) => {
                 for item in cols.into_iter().with_position() {

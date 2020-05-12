@@ -16,10 +16,18 @@ table! {
 }
 
 #[test]
-fn select_star() {
+fn select_table_star() {
     let (query, mut binds) = users::table.select(users::star).to_sql();
 
     assert_eq!(query, r#"SELECT "users".* FROM "users""#);
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn select_star() {
+    let (query, mut binds) = users::table.select(star()).to_sql();
+
+    assert_eq!(query, r#"SELECT * FROM "users""#);
     assert_eq!(binds.next(), None);
 }
 
