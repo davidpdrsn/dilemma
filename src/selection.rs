@@ -4,24 +4,32 @@ use itertools::Itertools;
 use itertools::Position;
 use std::fmt::{self, Write};
 
-pub fn star() -> SimpleSelection {
-    SimpleSelection::Star
+pub fn star() -> SingleSelection {
+    SingleSelection::Star
 }
 
-pub fn count(selection: impl Into<SimpleSelection>) -> Selection {
+pub fn count(selection: impl Into<SingleSelection>) -> Selection {
     Selection::CountStar(selection.into())
 }
 
 #[derive(Debug)]
 pub enum Selection {
-    CountStar(SimpleSelection),
-    Simple(SimpleSelection),
-    List(Vec<SimpleSelection>),
+    CountStar(SingleSelection),
+    Simple(SingleSelection),
+    List(Vec<SingleSelection>),
+    Raw(String),
+}
+
+impl Selection {
+    pub fn raw(sql: &str) -> Self {
+        Selection::Raw(sql.to_string())
+    }
 }
 
 impl WriteSql for Selection {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
+            Selection::Raw(sql) => write!(f, "{}", sql),
             Selection::Simple(inner) => inner.write_sql(f, bind_count),
             Selection::CountStar(inner) => {
                 write!(f, "count(")?;
@@ -49,27 +57,35 @@ impl WriteSql for Selection {
 }
 
 #[derive(Debug)]
-pub enum SimpleSelection {
+pub enum SingleSelection {
     Star,
     TableStar(Table),
     Column(Column),
+    Raw(String),
 }
 
-impl From<SimpleSelection> for Selection {
-    fn from(selection: SimpleSelection) -> Self {
+impl SingleSelection {
+    pub fn raw(sql: &str) -> Self {
+        SingleSelection::Raw(sql.to_string())
+    }
+}
+
+impl From<SingleSelection> for Selection {
+    fn from(selection: SingleSelection) -> Self {
         Selection::Simple(selection)
     }
 }
 
-impl WriteSql for SimpleSelection {
+impl WriteSql for SingleSelection {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            SimpleSelection::Star => write!(f, "*"),
-            SimpleSelection::TableStar(table) => {
+            SingleSelection::Raw(inner) => write!(f, "{}", inner),
+            SingleSelection::Star => write!(f, "*"),
+            SingleSelection::TableStar(table) => {
                 table.write_sql(f, bind_count)?;
                 write!(f, ".*")
             }
-            SimpleSelection::Column(col) => col.write_sql(f, bind_count),
+            SingleSelection::Column(col) => col.write_sql(f, bind_count),
         }
     }
 }
@@ -81,8 +97,8 @@ macro_rules! impl_select_dsl {
         #[allow(warnings)]
         impl<$first, $second> Into<Selection> for ($first, $second)
         where
-            $first: Into<SimpleSelection>,
-            $second: Into<SimpleSelection>,
+            $first: Into<SingleSelection>,
+            $second: Into<SingleSelection>,
         {
             fn into(self) -> Selection {
                 let ($first, $second) = self;
@@ -98,8 +114,8 @@ macro_rules! impl_select_dsl {
         #[allow(warnings)]
         impl<$head, $($tail),*> Into<Selection> for ($head, $($tail),*)
         where
-            $head: Into<SimpleSelection>,
-            $( $tail: Into<SimpleSelection> ),*
+            $head: Into<SingleSelection>,
+            $( $tail: Into<SingleSelection> ),*
         {
             fn into(self) -> Selection {
                 let ($head, $($tail),*) = self;

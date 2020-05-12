@@ -1,40 +1,41 @@
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::binds::BindCount;
 use crate::{Column, WriteSql};
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone)]
-pub enum Ordering {
+pub enum Order {
     Default(Column),
     Asc(Column),
     Desc(Column),
     And {
-        lhs: Box<Ordering>,
-        rhs: Box<Ordering>,
+        lhs: Box<Order>,
+        rhs: Box<Order>,
     },
 }
 
-impl<T> From<T> for Ordering
+impl<T> From<T> for Order
 where
     T: Into<Column>,
 {
     fn from(col: T) -> Self {
-        Ordering::Default(col.into())
+        Order::Default(col.into())
     }
 }
 
-impl WriteSql for Ordering {
+impl WriteSql for Order {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Ordering::Default(col) => col.write_sql(f, bind_count),
-            Ordering::Asc(col) => {
+            Order::Default(col) => col.write_sql(f, bind_count),
+            Order::Asc(col) => {
                 col.write_sql(f, bind_count)?;
                 write!(f, " ASC")
             }
-            Ordering::Desc(col) => {
+            Order::Desc(col) => {
                 col.write_sql(f, bind_count)?;
                 write!(f, " DESC")
             }
-            Ordering::And { lhs, rhs } => {
+            Order::And { lhs, rhs } => {
                 lhs.write_sql(f, bind_count)?;
                 write!(f, ", ")?;
                 rhs.write_sql(f, bind_count)?;
@@ -44,22 +45,26 @@ impl WriteSql for Ordering {
     }
 }
 
-pub trait OrderingDsl {
-    fn asc(self) -> Ordering;
-
-    fn desc(self) -> Ordering;
+impl CollectBinds for Order {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
 }
 
-impl<T> OrderingDsl for T
+pub trait OrderDsl {
+    fn asc(self) -> Order;
+
+    fn desc(self) -> Order;
+}
+
+impl<T> OrderDsl for T
 where
     T: Into<Column>,
 {
-    fn asc(self) -> Ordering {
-        Ordering::Asc(self.into())
+    fn asc(self) -> Order {
+        Order::Asc(self.into())
     }
 
-    fn desc(self) -> Ordering {
-        Ordering::Desc(self.into())
+    fn desc(self) -> Order {
+        Order::Desc(self.into())
     }
 }
 
@@ -68,14 +73,14 @@ macro_rules! impl_into_ordering {
         $first:ident, $second:ident,
     ) => {
         #[allow(warnings)]
-        impl<$first, $second> Into<Ordering> for ($first, $second)
+        impl<$first, $second> Into<Order> for ($first, $second)
         where
-            $first: Into<Ordering>,
-            $second: Into<Ordering>,
+            $first: Into<Order>,
+            $second: Into<Order>,
         {
-            fn into(self) -> Ordering {
+            fn into(self) -> Order {
                 let (lhs, rhs) = self;
-                Ordering::And {
+                Order::And {
                     lhs: Box::new(lhs.into()),
                     rhs: Box::new(rhs.into()),
                 }
@@ -87,18 +92,18 @@ macro_rules! impl_into_ordering {
         $head:ident, $($tail:ident),*,
     ) => {
         #[allow(warnings)]
-        impl<$head, $($tail),*> Into<Ordering> for ($head, $($tail),*)
+        impl<$head, $($tail),*> Into<Order> for ($head, $($tail),*)
         where
-            $head: Into<Ordering>,
-            $( $tail: Into<Ordering> ),*
+            $head: Into<Order>,
+            $( $tail: Into<Order> ),*
         {
-            fn into(self) -> Ordering {
+            fn into(self) -> Order {
                 let (
                     $head, $($tail),*
                 ) = self;
-                let tail_ordering: Ordering = ($($tail),*).into();
+                let tail_ordering: Order = ($($tail),*).into();
 
-                Ordering::And {
+                Order::And {
                     lhs: Box::new($head.into()),
                     rhs: Box::new(tail_ordering),
                 }

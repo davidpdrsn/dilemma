@@ -1,4 +1,3 @@
-use crate::binds::Binds;
 use crate::grouping::*;
 use crate::ordering::*;
 use crate::selection::*;
@@ -11,15 +10,15 @@ pub trait QueryDsl<T> {
 
     fn or_filter(self, filter: impl Into<Filter>) -> Query<T>;
 
-    fn join(self, join: PartialJoin) -> Query<T>;
+    fn join(self, join: impl Into<Join>) -> Query<T>;
 
-    fn inner_join(self, join: PartialJoin) -> Query<T>;
+    fn inner_join(self, join: impl Into<JoinOn>) -> Query<T>;
 
-    fn outer_join(self, join: PartialJoin) -> Query<T>;
+    fn outer_join(self, join: impl Into<JoinOn>) -> Query<T>;
 
-    fn group_by(self, grouping: impl Into<Grouping>) -> Query<T>;
+    fn group_by(self, grouping: impl Into<Group>) -> Query<T>;
 
-    fn then_group_by(self, grouping: impl Into<Grouping>) -> Query<T>;
+    fn then_group_by(self, grouping: impl Into<Group>) -> Query<T>;
 
     fn having(self, having: impl Into<Filter>) -> Query<T>;
 
@@ -27,11 +26,11 @@ pub trait QueryDsl<T> {
 
     fn or_having(self, having: impl Into<Filter>) -> Query<T>;
 
-    fn order(self, ordering: impl Into<Ordering>) -> Query<T>;
+    fn order(self, ordering: impl Into<Order>) -> Query<T>;
 
-    fn order_by(self, ordering: impl Into<Ordering>) -> Query<T>;
+    fn order_by(self, ordering: impl Into<Order>) -> Query<T>;
 
-    fn then_order_by(self, ordering: impl Into<Ordering>) -> Query<T>;
+    fn then_order_by(self, ordering: impl Into<Order>) -> Query<T>;
 
     fn limit(self, limit: u64) -> Query<T>;
 
@@ -87,40 +86,34 @@ where
         query
     }
 
-    fn inner_join(self, join: PartialJoin) -> Query<K> {
+    fn inner_join(self, join: impl Into<JoinOn>) -> Query<K> {
         let mut query = self.into();
-        query.joins.push(Join {
-            kind: JoinKind::Inner,
-            table: join.table,
-            filter: join.filter,
-        });
+        query.add_join(join.into(), JoinKind::Inner);
         query
     }
 
-    fn join(self, join: PartialJoin) -> Query<K> {
-        self.into().inner_join(join)
-    }
-
-    fn outer_join(self, join: PartialJoin) -> Query<K> {
+    fn join(self, join: impl Into<Join>) -> Query<K> {
         let mut query = self.into();
-        query.joins.push(Join {
-            kind: JoinKind::Outer,
-            table: join.table,
-            filter: join.filter,
-        });
+        query.joins.push(join.into());
         query
     }
 
-    fn group_by(self, group: impl Into<Grouping>) -> Query<K> {
+    fn outer_join(self, join: impl Into<JoinOn>) -> Query<K> {
+        let mut query = self.into();
+        query.add_join(join.into(), JoinKind::Outer);
+        query
+    }
+
+    fn group_by(self, group: impl Into<Group>) -> Query<K> {
         let mut query = self.into();
         query.group = Some(group.into());
         query
     }
 
-    fn then_group_by(self, group: impl Into<Grouping>) -> Query<K> {
+    fn then_group_by(self, group: impl Into<Group>) -> Query<K> {
         let mut query = self.into();
         let new_grouping = match query.group.take() {
-            Some(lhs) => Grouping::And {
+            Some(lhs) => Group::And {
                 lhs: Box::new(lhs),
                 rhs: Box::new(group.into()),
             },
@@ -158,20 +151,20 @@ where
         query
     }
 
-    fn order(self, order: impl Into<Ordering>) -> Query<K> {
+    fn order(self, order: impl Into<Order>) -> Query<K> {
         self.order_by(order)
     }
 
-    fn order_by(self, order: impl Into<Ordering>) -> Query<K> {
+    fn order_by(self, order: impl Into<Order>) -> Query<K> {
         let mut query = self.into();
         query.order = Some(order.into());
         query
     }
 
-    fn then_order_by(self, order: impl Into<Ordering>) -> Query<K> {
+    fn then_order_by(self, order: impl Into<Order>) -> Query<K> {
         let mut query = self.into();
         let new_order = match query.order.take() {
-            Some(lhs) => Ordering::And {
+            Some(lhs) => Order::And {
                 lhs: Box::new(lhs),
                 rhs: Box::new(order.into()),
             },

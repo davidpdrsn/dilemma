@@ -1,7 +1,3 @@
-use crate::grouping::Grouping;
-use crate::ordering::Ordering;
-use crate::row_locking::RowLocking;
-use crate::{Expr, Filter, Join, Query, Table};
 use std::fmt::{self, Write};
 use std::iter::IntoIterator;
 use std::vec::IntoIter;
@@ -44,7 +40,7 @@ impl BindsInternal {
         }
     }
 
-    fn push(&mut self, bind: Bind) {
+    pub fn push(&mut self, bind: Bind) {
         self.vec.push(bind);
     }
 }
@@ -75,97 +71,4 @@ pub enum Bind {
     String(String),
     I32(i32),
     U64(u64),
-}
-
-impl<T> CollectBinds for Query<T> {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        self.table.collect_binds(binds);
-        self.joins.collect_binds(binds);
-
-        if let Some(filter) = &self.filter {
-            filter.collect_binds(binds);
-        }
-
-        if let Some(group) = &self.group {
-            group.collect_binds(binds);
-        }
-
-        if let Some(having) = &self.having {
-            having.collect_binds(binds);
-        }
-
-        if let Some(order) = &self.order {
-            order.collect_binds(binds);
-        }
-
-        if let Some(limit) = &self.limit {
-            binds.push(Bind::U64(*limit));
-        }
-
-        if let Some(offset) = &self.offset {
-            binds.push(Bind::U64(*offset));
-        }
-
-        self.row_locking.collect_binds(binds);
-    }
-}
-
-impl CollectBinds for Table {
-    fn collect_binds(&self, _: &mut BindsInternal) {}
-}
-
-impl CollectBinds for Vec<Join> {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        for join in self {
-            join.collect_binds(binds)
-        }
-    }
-}
-
-impl CollectBinds for Join {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        self.table.collect_binds(binds);
-        self.filter.collect_binds(binds);
-    }
-}
-
-impl CollectBinds for Filter {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        match self {
-            Filter::BinOp { lhs, op: _, rhs } => {
-                lhs.collect_binds(binds);
-                rhs.collect_binds(binds);
-            }
-            Filter::And(lhs, rhs) => {
-                lhs.collect_binds(binds);
-                rhs.collect_binds(binds);
-            }
-            Filter::Or(lhs, rhs) => {
-                lhs.collect_binds(binds);
-                rhs.collect_binds(binds);
-            }
-        }
-    }
-}
-
-impl CollectBinds for Expr {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        match self {
-            Expr::Column(_) => {}
-            Expr::I32(value) => binds.push(Bind::I32(*value)),
-            Expr::String(value) => binds.push(Bind::String(value.clone())),
-        }
-    }
-}
-
-impl CollectBinds for Ordering {
-    fn collect_binds(&self, _: &mut BindsInternal) {}
-}
-
-impl CollectBinds for Grouping {
-    fn collect_binds(&self, _: &mut BindsInternal) {}
-}
-
-impl CollectBinds for RowLocking {
-    fn collect_binds(&self, _: &mut BindsInternal) {}
 }

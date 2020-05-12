@@ -1,4 +1,5 @@
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds, Bind};
 use crate::sql_types::{Integer, Text};
 use crate::{Column, Filter, WriteSql};
 use std::fmt::{self, Write};
@@ -143,6 +144,16 @@ impl WriteSql for Expr {
             Expr::Column(col) => col.write_sql(f, bind_count),
             Expr::I32(_) => bind_count.write_sql(f),
             Expr::String(_) => bind_count.write_sql(f),
+        }
+    }
+}
+
+impl CollectBinds for Expr {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        match self {
+            Expr::Column(_) => {}
+            Expr::I32(value) => binds.push(Bind::I32(*value)),
+            Expr::String(value) => binds.push(Bind::String(value.clone())),
         }
     }
 }

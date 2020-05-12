@@ -1,29 +1,74 @@
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::{filter::Filter, Table, WriteSql};
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Join {
-    pub(crate) kind: JoinKind,
-    pub(crate) table: Table,
-    pub(crate) filter: Filter,
+pub enum Join {
+    Known {
+        kind: JoinKind,
+        table: Table,
+        filter: Filter,
+    },
+    RawWithKind {
+        kind: JoinKind,
+        sql: String,
+    },
+    Raw(String),
 }
 
 impl WriteSql for Join {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
-        self.kind.write_sql(f, bind_count)?;
-        self.table.write_sql(f, bind_count)?;
-
-        write!(f, " ON ")?;
-
-        self.filter.write_sql(f, bind_count)?;
+        match self {
+            Join::Known {
+                kind,
+                table,
+                filter,
+            } => {
+                kind.write_sql(f, bind_count)?;
+                table.write_sql(f, bind_count)?;
+                write!(f, " ON ")?;
+                filter.write_sql(f, bind_count)?;
+            }
+            Join::RawWithKind { kind, sql } => {
+                kind.write_sql(f, bind_count)?;
+                write!(f, "{}", sql)?;
+            }
+            Join::Raw(sql) => {
+                write!(f, "{}", sql)?;
+            }
+        }
 
         Ok(())
     }
 }
 
+impl CollectBinds for Join {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        match self {
+            Join::Known {
+                kind: _,
+                table,
+                filter,
+            } => {
+                table.collect_binds(binds);
+                filter.collect_binds(binds);
+            }
+            Join::RawWithKind { kind: _, sql:_} => {}
+            Join::Raw(_) => {}
+        }
+    }
+}
+
+impl Join {
+    pub fn raw(sql: &str) -> Self {
+        Join::Raw(sql.to_string())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum JoinKind {
+    Default,
     Inner,
     Outer,
 }
@@ -31,6 +76,7 @@ pub enum JoinKind {
 impl WriteSql for JoinKind {
     fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         match self {
+            JoinKind::Default => write!(f, "JOIN ")?,
             JoinKind::Inner => write!(f, "INNER JOIN ")?,
             JoinKind::Outer => write!(f, "OUTER JOIN ")?,
         }
@@ -39,21 +85,27 @@ impl WriteSql for JoinKind {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct PartialJoin {
-    pub(crate) table: Table,
-    pub(crate) filter: Filter,
+pub enum JoinOn {
+    Known { table: Table, filter: Filter },
+    Raw(String),
+}
+
+impl JoinOn {
+    pub fn raw(sql: &str) -> Self {
+        JoinOn::Raw(sql.to_string())
+    }
 }
 
 pub trait JoinOnDsl {
-    fn on(self, filter: Filter) -> PartialJoin;
+    fn on(self, filter: Filter) -> JoinOn;
 }
 
 impl<T> JoinOnDsl for T
 where
     T: Into<Table>,
 {
-    fn on(self, filter: Filter) -> PartialJoin {
-        PartialJoin {
+    fn on(self, filter: Filter) -> JoinOn {
+        JoinOn::Known {
             table: self.into(),
             filter,
         }

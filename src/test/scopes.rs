@@ -26,14 +26,18 @@ where
     }
 
     fn in_country(self, country_id: i32) -> Query<users::table> {
-        self.join(countries::table.on(countries::id.eq(users::country_id)))
+        self.inner_join(countries::table.on(countries::id.eq(users::country_id)))
             .filter(countries::id.eq(country_id))
     }
 }
 
 #[test]
 fn scopes() {
-    let (query, mut binds) = users::table.named("Bob").in_country(1).select(users::star).to_sql();
+    let (query, mut binds) = users::table
+        .named("Bob")
+        .in_country(1)
+        .select(users::star)
+        .to_sql();
 
     assert_eq!(
         query,

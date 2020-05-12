@@ -1,30 +1,31 @@
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::{Column, WriteSql};
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone)]
-pub enum Grouping {
+pub enum Group {
     Col(Column),
     And {
-        lhs: Box<Grouping>,
-        rhs: Box<Grouping>,
+        lhs: Box<Group>,
+        rhs: Box<Group>,
     },
 }
 
-impl<T> From<T> for Grouping
+impl<T> From<T> for Group
 where
     T: Into<Column>,
 {
     fn from(col: T) -> Self {
-        Grouping::Col(col.into())
+        Group::Col(col.into())
     }
 }
 
-impl WriteSql for Grouping {
+impl WriteSql for Group {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Grouping::Col(col) => col.write_sql(f, bind_count),
-            Grouping::And { lhs, rhs } => {
+            Group::Col(col) => col.write_sql(f, bind_count),
+            Group::And { lhs, rhs } => {
                 lhs.write_sql(f, bind_count)?;
                 write!(f, ", ")?;
                 rhs.write_sql(f, bind_count)?;
@@ -34,19 +35,23 @@ impl WriteSql for Grouping {
     }
 }
 
+impl CollectBinds for Group {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
+}
+
 macro_rules! impl_into_grouping {
     (
         $first:ident, $second:ident,
     ) => {
         #[allow(warnings)]
-        impl<$first, $second> Into<Grouping> for ($first, $second)
+        impl<$first, $second> Into<Group> for ($first, $second)
         where
-            $first: Into<Grouping>,
-            $second: Into<Grouping>,
+            $first: Into<Group>,
+            $second: Into<Group>,
         {
-            fn into(self) -> Grouping {
+            fn into(self) -> Group {
                 let (lhs, rhs) = self;
-                Grouping::And {
+                Group::And {
                     lhs: Box::new(lhs.into()),
                     rhs: Box::new(rhs.into()),
                 }
@@ -58,18 +63,18 @@ macro_rules! impl_into_grouping {
         $head:ident, $($tail:ident),*,
     ) => {
         #[allow(warnings)]
-        impl<$head, $($tail),*> Into<Grouping> for ($head, $($tail),*)
+        impl<$head, $($tail),*> Into<Group> for ($head, $($tail),*)
         where
-            $head: Into<Grouping>,
-            $( $tail: Into<Grouping> ),*
+            $head: Into<Group>,
+            $( $tail: Into<Group> ),*
         {
-            fn into(self) -> Grouping {
+            fn into(self) -> Group {
                 let (
                     $head, $($tail),*
                 ) = self;
-                let tail_grouping: Grouping = ($($tail),*).into();
+                let tail_grouping: Group = ($($tail),*).into();
 
-                Grouping::And {
+                Group::And {
                     lhs: Box::new($head.into()),
                     rhs: Box::new(tail_grouping),
                 }

@@ -1,4 +1,5 @@
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::write_sql::WriteSql;
 use std::fmt::{self, Write};
 
@@ -34,6 +35,10 @@ impl RowLocking {
             no_wait: self.no_wait || other.no_wait,
         }
     }
+}
+
+impl CollectBinds for RowLocking {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
 }
 
 impl WriteSql for RowLocking {

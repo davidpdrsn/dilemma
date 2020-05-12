@@ -585,3 +585,40 @@ fn select_count_column() {
     assert_eq!(query, r#"SELECT count("users"."id") FROM "users""#);
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn raw_sql_select() {
+    let query = users::table
+        .inner_join(JoinOn::raw("countries on countries.id = 1"))
+        .join(Join::raw("inner join countries on 1=1"))
+        .filter(Filter::raw("1 = 2 AND 1 not in (1, 2, 3)"));
+
+    // group
+    // having
+    // order
+    // limit
+    // offset
+    // end query stuff
+
+    let (sql, mut binds) = query.select(Selection::raw("users.*")).to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT users.* FROM "users" INNER JOIN countries on countries.id = 1 inner join countries on 1=1 WHERE 1 = 2 AND 1 not in (1, 2, 3)"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn raw_sql_simple_select() {
+    let (sql, mut binds) = users::table
+        .select((
+            users::star,
+            SingleSelection::raw("countries.*"),
+            SingleSelection::raw("1 as one"),
+        ))
+        .to_sql();
+
+    assert_eq!(sql, r#"SELECT "users".*, countries.*, 1 as one FROM "users""#);
+    assert_eq!(binds.next(), None);
+}

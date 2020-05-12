@@ -1,4 +1,5 @@
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::{expr::Expr, BinOp, WriteSql};
 use std::fmt::{self, Write};
 
@@ -7,6 +8,7 @@ pub enum Filter {
     BinOp { lhs: Expr, op: BinOp, rhs: Expr },
     And(Box<Filter>, Box<Filter>),
     Or(Box<Filter>, Box<Filter>),
+    Raw(String),
 }
 
 impl WriteSql for Filter {
@@ -28,6 +30,9 @@ impl WriteSql for Filter {
                 write!(f, ") OR ")?;
                 rhs.write_sql(f, bind_count)?;
             }
+            Filter::Raw(sql) => {
+                write!(f, "{}", sql)?;
+            }
         }
 
         Ok(())
@@ -35,11 +40,35 @@ impl WriteSql for Filter {
 }
 
 impl Filter {
+    pub fn raw(sql: &str) -> Self {
+        Filter::Raw(sql.to_string())
+    }
+
     pub fn and(self, rhs: Filter) -> Self {
         Filter::And(Box::new(self), Box::new(rhs))
     }
 
     pub fn or(self, rhs: Filter) -> Self {
         Filter::Or(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl CollectBinds for Filter {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        match self {
+            Filter::BinOp { lhs, op: _, rhs } => {
+                lhs.collect_binds(binds);
+                rhs.collect_binds(binds);
+            }
+            Filter::And(lhs, rhs) => {
+                lhs.collect_binds(binds);
+                rhs.collect_binds(binds);
+            }
+            Filter::Or(lhs, rhs) => {
+                lhs.collect_binds(binds);
+                rhs.collect_binds(binds);
+            }
+            Filter::Raw(_) => {}
+        }
     }
 }

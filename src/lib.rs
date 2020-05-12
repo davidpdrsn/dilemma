@@ -7,6 +7,9 @@ use std::fmt::Write;
 use std::marker::PhantomData;
 use write_sql::WriteSql;
 
+#[cfg(test)]
+mod test;
+
 mod binds;
 mod expr;
 mod filter;
@@ -24,11 +27,11 @@ pub mod sql_types;
 pub use binds::{Bind, Binds};
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
-pub use grouping::Grouping;
-pub use join::{Join, JoinKind, JoinOnDsl, PartialJoin};
-pub use ordering::{Ordering, OrderingDsl};
+pub use grouping::Group;
+pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
+pub use ordering::{Order, OrderDsl};
 pub use query_dsl::QueryDsl;
-pub use selection::{Selection, SimpleSelection, count, star};
+pub use selection::{count, star, Selection, SingleSelection};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -74,11 +77,13 @@ pub struct Query<T> {
     table: Table,
     joins: Vec<Join>,
     filter: Option<Filter>,
-    group: Option<Grouping>,
+
+    group: Option<Group>,
     having: Option<Filter>,
-    order: Option<Ordering>,
+    order: Option<Order>,
     limit: Option<u64>,
     offset: Option<u64>,
+
     row_locking: RowLocking,
     _marker: PhantomData<T>,
 }
@@ -147,6 +152,21 @@ impl<T> Query<T> {
     pub fn remove_no_wait(mut self) -> Self {
         self.row_locking.no_wait = false;
         self
+    }
+
+    fn add_join(&mut self, join: JoinOn, kind: JoinKind) {
+        match join {
+            JoinOn::Known { table, filter } => {
+                self.joins.push(Join::Known {
+                    kind,
+                    table,
+                    filter,
+                });
+            }
+            JoinOn::Raw(sql) => {
+                self.joins.push(Join::RawWithKind { kind, sql });
+            }
+        }
     }
 }
 
@@ -243,5 +263,47 @@ impl<T> QueryWithSelection<T> {
     }
 }
 
-#[cfg(test)]
-mod test;
+impl<T> CollectBinds for Query<T> {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        self.table.collect_binds(binds);
+        self.joins.collect_binds(binds);
+
+        if let Some(filter) = &self.filter {
+            filter.collect_binds(binds);
+        }
+
+        if let Some(group) = &self.group {
+            group.collect_binds(binds);
+        }
+
+        if let Some(having) = &self.having {
+            having.collect_binds(binds);
+        }
+
+        if let Some(order) = &self.order {
+            order.collect_binds(binds);
+        }
+
+        if let Some(limit) = &self.limit {
+            binds.push(Bind::U64(*limit));
+        }
+
+        if let Some(offset) = &self.offset {
+            binds.push(Bind::U64(*offset));
+        }
+
+        self.row_locking.collect_binds(binds);
+    }
+}
+
+impl CollectBinds for Table {
+    fn collect_binds(&self, _: &mut BindsInternal) {}
+}
+
+impl CollectBinds for Vec<Join> {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        for join in self {
+            join.collect_binds(binds)
+        }
+    }
+}
