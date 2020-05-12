@@ -42,17 +42,17 @@ macro_rules! table {
             #[derive(Copy, Clone)]
             pub struct star;
 
-            impl Into<$crate::Selection> for star {
-                fn into(self) -> $crate::Selection {
-                    $crate::Selection::Simple(
-                        $crate::SingleSelection::TableStar($crate::Table::from(table))
+            impl Into<$crate::Select> for star {
+                fn into(self) -> $crate::Select {
+                    $crate::Select::Simple(
+                        $crate::Selection::TableStar($crate::Table::from(table))
                     )
                 }
             }
 
-            impl Into<$crate::SingleSelection> for star {
-                fn into(self) -> $crate::SingleSelection {
-                    $crate::SingleSelection::TableStar($crate::Table::from(table))
+            impl Into<$crate::Selection> for star {
+                fn into(self) -> $crate::Selection {
+                    $crate::Selection::TableStar($crate::Table::from(table))
                 }
             }
 
@@ -60,17 +60,17 @@ macro_rules! table {
                 #[derive(Copy, Clone)]
                 pub struct $col;
 
-                impl From<$col> for $crate::Selection {
-                    fn from(col: $col) -> $crate::Selection {
-                        $crate::Selection::Simple(
-                            $crate::SingleSelection::Column($crate::Column::from(col))
+                impl From<$col> for $crate::Select {
+                    fn from(col: $col) -> $crate::Select {
+                        $crate::Select::Simple(
+                            $crate::Selection::Column($crate::Column::from(col))
                         )
                     }
                 }
 
-                impl From<$col> for $crate::SingleSelection {
-                    fn from(col: $col) -> $crate::SingleSelection {
-                        $crate::SingleSelection::Column($crate::Column::from(col))
+                impl From<$col> for $crate::Selection {
+                    fn from(col: $col) -> $crate::Selection {
+                        $crate::Selection::Column($crate::Column::from(col))
                     }
                 }
 

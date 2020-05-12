@@ -1,10 +1,10 @@
 use crate::grouping::*;
 use crate::ordering::*;
-use crate::selection::*;
+use crate::select::*;
 use crate::*;
 
 pub trait QueryDsl<T> {
-    fn select(self, selectable: impl Into<Selection>) -> QueryWithSelection<T>;
+    fn select(self, selectable: impl Into<Select>) -> QueryWithSelect<T>;
 
     fn filter(self, filter: impl Into<Filter>) -> Query<T>;
 
@@ -55,8 +55,8 @@ impl<T, K> QueryDsl<K> for T
 where
     T: Into<Query<K>>,
 {
-    fn select(self, selectable: impl Into<Selection>) -> QueryWithSelection<K> {
-        QueryWithSelection {
+    fn select(self, selectable: impl Into<Select>) -> QueryWithSelect<K> {
+        QueryWithSelect {
             query: self.into(),
             selection: selectable.into(),
         }

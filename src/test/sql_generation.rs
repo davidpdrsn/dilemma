@@ -600,7 +600,7 @@ fn raw_sql_select() {
     // offset
     // end query stuff
 
-    let (sql, mut binds) = query.select(Selection::raw("users.*")).to_sql();
+    let (sql, mut binds) = query.select(Select::raw("users.*")).to_sql();
 
     assert_eq!(
         sql,
@@ -614,8 +614,8 @@ fn raw_sql_simple_select() {
     let (sql, mut binds) = users::table
         .select((
             users::star,
-            SingleSelection::raw("countries.*"),
-            SingleSelection::raw("1 as one"),
+            Selection::raw("countries.*"),
+            Selection::raw("1 as one"),
         ))
         .to_sql();
 

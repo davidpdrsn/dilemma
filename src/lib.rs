@@ -19,7 +19,7 @@ mod macros;
 mod ordering;
 mod query_dsl;
 mod row_locking;
-mod selection;
+mod select;
 mod write_sql;
 
 pub mod sql_types;
@@ -31,7 +31,7 @@ pub use grouping::Group;
 pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
 pub use ordering::{Order, OrderDsl};
 pub use query_dsl::QueryDsl;
-pub use selection::{count, star, Selection, SingleSelection};
+pub use select::{count, star, Select, Selection};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -188,12 +188,12 @@ impl<T> From<Table> for Query<T> {
 }
 
 #[derive(Debug)]
-pub struct QueryWithSelection<T> {
+pub struct QueryWithSelect<T> {
     query: Query<T>,
-    selection: Selection,
+    selection: Select,
 }
 
-impl<T> QueryWithSelection<T> {
+impl<T> QueryWithSelect<T> {
     pub fn to_sql(self) -> (String, Binds) {
         let mut bind_count = BindCount::new();
         let sql = self.to_sql_string(&mut bind_count);

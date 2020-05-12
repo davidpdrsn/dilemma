@@ -4,40 +4,40 @@ use itertools::Itertools;
 use itertools::Position;
 use std::fmt::{self, Write};
 
-pub fn star() -> SingleSelection {
-    SingleSelection::Star
+pub fn star() -> Selection {
+    Selection::Star
 }
 
-pub fn count(selection: impl Into<SingleSelection>) -> Selection {
-    Selection::CountStar(selection.into())
+pub fn count(selection: impl Into<Selection>) -> Select {
+    Select::CountStar(selection.into())
 }
 
 #[derive(Debug)]
-pub enum Selection {
-    CountStar(SingleSelection),
-    Simple(SingleSelection),
-    List(Vec<SingleSelection>),
+pub enum Select {
+    CountStar(Selection),
+    Simple(Selection),
+    List(Vec<Selection>),
     Raw(String),
 }
 
-impl Selection {
+impl Select {
     pub fn raw(sql: &str) -> Self {
-        Selection::Raw(sql.to_string())
+        Select::Raw(sql.to_string())
     }
 }
 
-impl WriteSql for Selection {
+impl WriteSql for Select {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Selection::Raw(sql) => write!(f, "{}", sql),
-            Selection::Simple(inner) => inner.write_sql(f, bind_count),
-            Selection::CountStar(inner) => {
+            Select::Raw(sql) => write!(f, "{}", sql),
+            Select::Simple(inner) => inner.write_sql(f, bind_count),
+            Select::CountStar(inner) => {
                 write!(f, "count(")?;
                 inner.write_sql(f, bind_count)?;
                 write!(f, ")")?;
                 Ok(())
             }
-            Selection::List(selections) => {
+            Select::List(selections) => {
                 for item in selections.into_iter().with_position() {
                     match item {
                         Position::First(col) | Position::Middle(col) => {
@@ -57,35 +57,35 @@ impl WriteSql for Selection {
 }
 
 #[derive(Debug)]
-pub enum SingleSelection {
+pub enum Selection {
     Star,
     TableStar(Table),
     Column(Column),
     Raw(String),
 }
 
-impl SingleSelection {
+impl Selection {
     pub fn raw(sql: &str) -> Self {
-        SingleSelection::Raw(sql.to_string())
+        Selection::Raw(sql.to_string())
     }
 }
 
-impl From<SingleSelection> for Selection {
-    fn from(selection: SingleSelection) -> Self {
-        Selection::Simple(selection)
+impl From<Selection> for Select {
+    fn from(selection: Selection) -> Self {
+        Select::Simple(selection)
     }
 }
 
-impl WriteSql for SingleSelection {
+impl WriteSql for Selection {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            SingleSelection::Raw(inner) => write!(f, "{}", inner),
-            SingleSelection::Star => write!(f, "*"),
-            SingleSelection::TableStar(table) => {
+            Selection::Raw(inner) => write!(f, "{}", inner),
+            Selection::Star => write!(f, "*"),
+            Selection::TableStar(table) => {
                 table.write_sql(f, bind_count)?;
                 write!(f, ".*")
             }
-            SingleSelection::Column(col) => col.write_sql(f, bind_count),
+            Selection::Column(col) => col.write_sql(f, bind_count),
         }
     }
 }
@@ -95,15 +95,15 @@ macro_rules! impl_select_dsl {
         $first:ident, $second:ident,
     ) => {
         #[allow(warnings)]
-        impl<$first, $second> Into<Selection> for ($first, $second)
+        impl<$first, $second> Into<Select> for ($first, $second)
         where
-            $first: Into<SingleSelection>,
-            $second: Into<SingleSelection>,
+            $first: Into<Selection>,
+            $second: Into<Selection>,
         {
-            fn into(self) -> Selection {
+            fn into(self) -> Select {
                 let ($first, $second) = self;
                 let mut cols = vec![$first.into(), $second.into()];
-                Selection::List(cols)
+                Select::List(cols)
             }
         }
     };
@@ -112,18 +112,18 @@ macro_rules! impl_select_dsl {
         $head:ident, $($tail:ident),*,
     ) => {
         #[allow(warnings)]
-        impl<$head, $($tail),*> Into<Selection> for ($head, $($tail),*)
+        impl<$head, $($tail),*> Into<Select> for ($head, $($tail),*)
         where
-            $head: Into<SingleSelection>,
-            $( $tail: Into<SingleSelection> ),*
+            $head: Into<Selection>,
+            $( $tail: Into<Selection> ),*
         {
-            fn into(self) -> Selection {
+            fn into(self) -> Select {
                 let ($head, $($tail),*) = self;
                 let mut cols = vec![
                     $head.into(),
                     $( $tail.into(), )*
                 ];
-                Selection::List(cols)
+                Select::List(cols)
             }
         }
 
