@@ -44,7 +44,15 @@ macro_rules! table {
 
             impl Into<$crate::Selection> for star {
                 fn into(self) -> $crate::Selection {
-                    $crate::Selection::TableStar($crate::Table::from(table))
+                    $crate::Selection::Simple(
+                        $crate::SimpleSelection::TableStar($crate::Table::from(table))
+                    )
+                }
+            }
+
+            impl Into<$crate::SimpleSelection> for star {
+                fn into(self) -> $crate::SimpleSelection {
+                    $crate::SimpleSelection::TableStar($crate::Table::from(table))
                 }
             }
 
@@ -54,7 +62,15 @@ macro_rules! table {
 
                 impl From<$col> for $crate::Selection {
                     fn from(col: $col) -> $crate::Selection {
-                        $crate::Selection::Column($crate::Column::from(col))
+                        $crate::Selection::Simple(
+                            $crate::SimpleSelection::Column($crate::Column::from(col))
+                        )
+                    }
+                }
+
+                impl From<$col> for $crate::SimpleSelection {
+                    fn from(col: $col) -> $crate::SimpleSelection {
+                        $crate::SimpleSelection::Column($crate::Column::from(col))
                     }
                 }
 

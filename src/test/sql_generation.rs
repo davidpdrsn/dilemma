@@ -569,3 +569,19 @@ fn offset() {
     assert_eq!(binds.next(), Some(Bind::U64(10)));
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn select_count_star() {
+    let (query, mut binds) = users::table.select(count(star())).to_sql();
+
+    assert_eq!(query, r#"SELECT count(*) FROM "users""#);
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn select_count_column() {
+    let (query, mut binds) = users::table.select(count(users::id)).to_sql();
+
+    assert_eq!(query, r#"SELECT count("users"."id") FROM "users""#);
+    assert_eq!(binds.next(), None);
+}

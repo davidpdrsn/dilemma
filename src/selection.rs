@@ -6,23 +6,23 @@ use std::fmt::{self, Write};
 
 #[derive(Debug)]
 pub enum Selection {
-    TableStar(Table),
-    Star,
-    Column(Column),
-    List(Vec<Selection>),
+    CountStar(SimpleSelection),
+    Simple(SimpleSelection),
+    List(Vec<SimpleSelection>),
 }
 
 impl WriteSql for Selection {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Selection::TableStar(table) => {
-                table.write_sql(f, bind_count)?;
-                write!(f, ".*")
+            Selection::Simple(inner) => inner.write_sql(f, bind_count),
+            Selection::CountStar(inner) => {
+                write!(f, "count(")?;
+                inner.write_sql(f, bind_count)?;
+                write!(f, ")")?;
+                Ok(())
             }
-            Selection::Star => write!(f, "*"),
-            Selection::Column(col) => col.write_sql(f, bind_count),
-            Selection::List(cols) => {
-                for item in cols.into_iter().with_position() {
+            Selection::List(selections) => {
+                for item in selections.into_iter().with_position() {
                     match item {
                         Position::First(col) | Position::Middle(col) => {
                             col.write_sql(f, bind_count)?;
@@ -33,8 +33,35 @@ impl WriteSql for Selection {
                         }
                     }
                 }
+
                 Ok(())
             }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum SimpleSelection {
+    Star,
+    TableStar(Table),
+    Column(Column),
+}
+
+impl From<SimpleSelection> for Selection {
+    fn from(selection: SimpleSelection) -> Self {
+        Selection::Simple(selection)
+    }
+}
+
+impl WriteSql for SimpleSelection {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        match self {
+            SimpleSelection::Star => write!(f, "*"),
+            SimpleSelection::TableStar(table) => {
+                table.write_sql(f, bind_count)?;
+                write!(f, ".*")
+            }
+            SimpleSelection::Column(col) => col.write_sql(f, bind_count),
         }
     }
 }
@@ -46,8 +73,8 @@ macro_rules! impl_select_dsl {
         #[allow(warnings)]
         impl<$first, $second> Into<Selection> for ($first, $second)
         where
-            $first: Into<Selection>,
-            $second: Into<Selection>,
+            $first: Into<SimpleSelection>,
+            $second: Into<SimpleSelection>,
         {
             fn into(self) -> Selection {
                 let ($first, $second) = self;
@@ -63,8 +90,8 @@ macro_rules! impl_select_dsl {
         #[allow(warnings)]
         impl<$head, $($tail),*> Into<Selection> for ($head, $($tail),*)
         where
-            $head: Into<Selection>,
-            $( $tail: Into<Selection> ),*
+            $head: Into<SimpleSelection>,
+            $( $tail: Into<SimpleSelection> ),*
         {
             fn into(self) -> Selection {
                 let ($head, $($tail),*) = self;

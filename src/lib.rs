@@ -28,7 +28,7 @@ pub use grouping::Grouping;
 pub use join::{Join, JoinKind, JoinOnDsl, PartialJoin};
 pub use ordering::{Ordering, OrderingDsl};
 pub use query_dsl::QueryDsl;
-pub use selection::Selection;
+pub use selection::{Selection, SimpleSelection};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -243,8 +243,12 @@ impl<T> QueryWithSelection<T> {
     }
 }
 
-pub fn star() -> Selection {
-    Selection::Star
+pub fn star() -> SimpleSelection {
+    SimpleSelection::Star
+}
+
+pub fn count(selection: impl Into<SimpleSelection>) -> Selection {
+    Selection::CountStar(selection.into())
 }
 
 #[cfg(test)]
