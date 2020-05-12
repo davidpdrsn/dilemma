@@ -28,7 +28,7 @@ pub use grouping::Grouping;
 pub use join::{Join, JoinKind, JoinOnDsl, PartialJoin};
 pub use ordering::{Ordering, OrderingDsl};
 pub use query_dsl::QueryDsl;
-pub use selection::{Selection, SimpleSelection};
+pub use selection::{Selection, SimpleSelection, count, star};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -241,14 +241,6 @@ impl<T> QueryWithSelection<T> {
         self.query.collect_binds(&mut binds);
         Binds::from(binds)
     }
-}
-
-pub fn star() -> SimpleSelection {
-    SimpleSelection::Star
-}
-
-pub fn count(selection: impl Into<SimpleSelection>) -> Selection {
-    Selection::CountStar(selection.into())
 }
 
 #[cfg(test)]

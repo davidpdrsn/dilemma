@@ -4,6 +4,14 @@ use itertools::Itertools;
 use itertools::Position;
 use std::fmt::{self, Write};
 
+pub fn star() -> SimpleSelection {
+    SimpleSelection::Star
+}
+
+pub fn count(selection: impl Into<SimpleSelection>) -> Selection {
+    Selection::CountStar(selection.into())
+}
+
 #[derive(Debug)]
 pub enum Selection {
     CountStar(SimpleSelection),
