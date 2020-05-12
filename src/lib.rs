@@ -13,10 +13,12 @@ mod test;
 mod binds;
 mod expr;
 mod filter;
-mod grouping;
+mod group;
 mod join;
+mod limit;
 mod macros;
-mod ordering;
+mod offset;
+mod order;
 mod query_dsl;
 mod row_locking;
 mod select;
@@ -27,9 +29,11 @@ pub mod sql_types;
 pub use binds::{Bind, Binds};
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
-pub use grouping::Group;
+pub use group::Group;
 pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
-pub use ordering::{Order, OrderDsl};
+pub use limit::Limit;
+pub use offset::Offset;
+pub use order::{Order, OrderDsl};
 pub use query_dsl::QueryDsl;
 pub use select::{count, star, Select, Selection};
 
@@ -77,13 +81,11 @@ pub struct Query<T> {
     table: Table,
     joins: Vec<Join>,
     filter: Option<Filter>,
-
     group: Option<Group>,
     having: Option<Filter>,
     order: Option<Order>,
-    limit: Option<u64>,
-    offset: Option<u64>,
-
+    limit: Option<Limit>,
+    offset: Option<Offset>,
     row_locking: RowLocking,
     _marker: PhantomData<T>,
 }
@@ -236,14 +238,14 @@ impl<T> QueryWithSelect<T> {
                 order.write_sql(&mut f, bind_count)?;
             }
 
-            if let Some(_) = &self.query.limit {
+            if let Some(limit) = &self.query.limit {
                 write!(f, " LIMIT ")?;
-                bind_count.write_sql(&mut f)?;
+                limit.write_sql(&mut f, bind_count)?;
             }
 
-            if let Some(_) = &self.query.offset {
+            if let Some(offset) = &self.query.offset {
                 write!(f, " OFFSET ")?;
-                bind_count.write_sql(&mut f)?;
+                offset.write_sql(&mut f, bind_count)?;
             }
 
             self.query.row_locking.write_sql(&mut f, bind_count)?;
@@ -285,11 +287,11 @@ impl<T> CollectBinds for Query<T> {
         }
 
         if let Some(limit) = &self.limit {
-            binds.push(Bind::U64(*limit));
+            limit.collect_binds(binds);
         }
 
         if let Some(offset) = &self.offset {
-            binds.push(Bind::U64(*offset));
+            offset.collect_binds(binds);
         }
 
         self.row_locking.collect_binds(binds);

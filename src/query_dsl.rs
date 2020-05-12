@@ -1,5 +1,5 @@
-use crate::grouping::*;
-use crate::ordering::*;
+use crate::group::*;
+use crate::order::*;
 use crate::select::*;
 use crate::*;
 
@@ -16,9 +16,9 @@ pub trait QueryDsl<T> {
 
     fn outer_join(self, join: impl Into<JoinOn>) -> Query<T>;
 
-    fn group_by(self, grouping: impl Into<Group>) -> Query<T>;
+    fn group_by(self, group: impl Into<Group>) -> Query<T>;
 
-    fn then_group_by(self, grouping: impl Into<Group>) -> Query<T>;
+    fn then_group_by(self, group: impl Into<Group>) -> Query<T>;
 
     fn having(self, having: impl Into<Filter>) -> Query<T>;
 
@@ -26,15 +26,13 @@ pub trait QueryDsl<T> {
 
     fn or_having(self, having: impl Into<Filter>) -> Query<T>;
 
-    fn order(self, ordering: impl Into<Order>) -> Query<T>;
+    fn order_by(self, order: impl Into<Order>) -> Query<T>;
 
-    fn order_by(self, ordering: impl Into<Order>) -> Query<T>;
+    fn then_order_by(self, order: impl Into<Order>) -> Query<T>;
 
-    fn then_order_by(self, ordering: impl Into<Order>) -> Query<T>;
+    fn limit(self, limit: impl Into<Limit>) -> Query<T>;
 
-    fn limit(self, limit: u64) -> Query<T>;
-
-    fn offset(self, offset: u64) -> Query<T>;
+    fn offset(self, offset: impl Into<Offset>) -> Query<T>;
 
     fn for_update(self) -> Query<T>;
 
@@ -112,14 +110,14 @@ where
 
     fn then_group_by(self, group: impl Into<Group>) -> Query<K> {
         let mut query = self.into();
-        let new_grouping = match query.group.take() {
+        let new_group = match query.group.take() {
             Some(lhs) => Group::And {
                 lhs: Box::new(lhs),
                 rhs: Box::new(group.into()),
             },
             None => group.into(),
         };
-        query.group = Some(new_grouping);
+        query.group = Some(new_group);
         query
     }
 
@@ -151,10 +149,6 @@ where
         query
     }
 
-    fn order(self, order: impl Into<Order>) -> Query<K> {
-        self.order_by(order)
-    }
-
     fn order_by(self, order: impl Into<Order>) -> Query<K> {
         let mut query = self.into();
         query.order = Some(order.into());
@@ -174,15 +168,15 @@ where
         query
     }
 
-    fn limit(self, limit: u64) -> Query<K> {
+    fn limit(self, limit: impl Into<Limit>) -> Query<K> {
         let mut query = self.into();
-        query.limit = Some(limit);
+        query.limit = Some(limit.into());
         query
     }
 
-    fn offset(self, offset: u64) -> Query<K> {
+    fn offset(self, offset: impl Into<Offset>) -> Query<K> {
         let mut query = self.into();
-        query.offset = Some(offset);
+        query.offset = Some(offset.into());
         query
     }
 

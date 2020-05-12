@@ -231,7 +231,7 @@ fn limit() {
     let (query, mut binds) = users::table.limit(10).select(users::star).to_sql();
 
     assert_eq!(query, r#"SELECT "users".* FROM "users" LIMIT $1"#);
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -248,7 +248,7 @@ fn merge_limit_lhs() {
         r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 LIMIT $2"#
     );
     assert_eq!(binds.next(), Some(Bind::I32(1)));
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -265,7 +265,7 @@ fn merge_limit_rhs() {
         r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 LIMIT $2"#
     );
     assert_eq!(binds.next(), Some(Bind::I32(1)));
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -278,7 +278,7 @@ fn merge_limit_both() {
         .to_sql();
 
     assert_eq!(query, r#"SELECT "users".* FROM "users" LIMIT $1"#);
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -374,12 +374,12 @@ fn order_and_limit() {
         query,
         r#"SELECT "users".* FROM "users" ORDER BY "users"."id" DESC LIMIT $1"#
     );
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
 #[test]
-fn multiple_orderings() {
+fn multiple_orders() {
     let (query, mut binds) = users::table
         .order_by((users::id, users::name, users::name))
         .select(users::star)
@@ -393,7 +393,7 @@ fn multiple_orderings() {
 }
 
 #[test]
-fn overriding_ordering() {
+fn overriding_order() {
     let (query, mut binds) = users::table
         .order_by((users::id, users::name, users::name))
         .order_by(users::id)
@@ -408,7 +408,7 @@ fn overriding_ordering() {
 }
 
 #[test]
-fn adding_overriding_ordering() {
+fn adding_overriding_order() {
     let (query, mut binds) = users::table
         .order_by(users::id)
         .then_order_by(users::name)
@@ -451,7 +451,7 @@ fn group_by_multiple() {
 }
 
 #[test]
-fn replace_grouping() {
+fn replace_group() {
     let (query, mut binds) = users::table
         .group_by(users::id)
         .group_by(users::name)
@@ -466,7 +466,7 @@ fn replace_grouping() {
 }
 
 #[test]
-fn add_grouping() {
+fn add_group() {
     let (query, mut binds) = users::table
         .group_by(users::id)
         .then_group_by(users::name)
@@ -566,7 +566,7 @@ fn offset() {
     let (query, mut binds) = users::table.offset(10).select(users::star).to_sql();
 
     assert_eq!(query, r#"SELECT "users".* FROM "users" OFFSET $1"#);
-    assert_eq!(binds.next(), Some(Bind::U64(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -590,21 +590,19 @@ fn select_count_column() {
 fn raw_sql_select() {
     let query = users::table
         .inner_join(JoinOn::raw("countries on countries.id = 1"))
-        .join(Join::raw("inner join countries on 1=1"))
-        .filter(Filter::raw("1 = 2 AND 1 not in (1, 2, 3)"));
-
-    // group
-    // having
-    // order
-    // limit
-    // offset
-    // end query stuff
+        .join(Join::raw("left outer join countries on 1=1"))
+        .filter(Filter::raw("1 = 2 AND 1 not in (1, 2, 3)"))
+        .group_by(Group::raw("users.id"))
+        .having(Filter::raw("1 = 2"))
+        .order_by(Order::raw("id desc"))
+        .limit(Limit::raw("10"))
+        .offset(Offset::raw("-10"));
 
     let (sql, mut binds) = query.select(Select::raw("users.*")).to_sql();
 
     assert_eq!(
         sql,
-        r#"SELECT users.* FROM "users" INNER JOIN countries on countries.id = 1 inner join countries on 1=1 WHERE 1 = 2 AND 1 not in (1, 2, 3)"#
+        r#"SELECT users.* FROM "users" INNER JOIN countries on countries.id = 1 left outer join countries on 1=1 WHERE 1 = 2 AND 1 not in (1, 2, 3) GROUP BY users.id HAVING 1 = 2 ORDER BY id desc LIMIT 10 OFFSET -10"#
     );
     assert_eq!(binds.next(), None);
 }
@@ -613,12 +611,12 @@ fn raw_sql_select() {
 fn raw_sql_simple_select() {
     let (sql, mut binds) = users::table
         .select((
-            users::star,
             Selection::raw("countries.*"),
+            users::star,
             Selection::raw("1 as one"),
         ))
         .to_sql();
 
-    assert_eq!(sql, r#"SELECT "users".*, countries.*, 1 as one FROM "users""#);
+    assert_eq!(sql, r#"SELECT countries.*, "users".*, 1 as one FROM "users""#);
     assert_eq!(binds.next(), None);
 }

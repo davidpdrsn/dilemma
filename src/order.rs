@@ -1,5 +1,5 @@
-use crate::binds::{BindsInternal, CollectBinds};
 use crate::binds::BindCount;
+use crate::binds::{BindsInternal, CollectBinds};
 use crate::{Column, WriteSql};
 use std::fmt::{self, Write};
 
@@ -8,10 +8,14 @@ pub enum Order {
     Default(Column),
     Asc(Column),
     Desc(Column),
-    And {
-        lhs: Box<Order>,
-        rhs: Box<Order>,
-    },
+    And { lhs: Box<Order>, rhs: Box<Order> },
+    Raw(String),
+}
+
+impl Order {
+    pub fn raw(sql: &str) -> Self {
+        Self::Raw(sql.to_string())
+    }
 }
 
 impl<T> From<T> for Order
@@ -41,6 +45,7 @@ impl WriteSql for Order {
                 rhs.write_sql(f, bind_count)?;
                 Ok(())
             }
+            Order::Raw(sql) => write!(f, "{}", sql),
         }
     }
 }
@@ -68,7 +73,7 @@ where
     }
 }
 
-macro_rules! impl_into_ordering {
+macro_rules! impl_into_order {
     (
         $first:ident, $second:ident,
     ) => {
@@ -101,20 +106,20 @@ macro_rules! impl_into_ordering {
                 let (
                     $head, $($tail),*
                 ) = self;
-                let tail_ordering: Order = ($($tail),*).into();
+                let tail_order: Order = ($($tail),*).into();
 
                 Order::And {
                     lhs: Box::new($head.into()),
-                    rhs: Box::new(tail_ordering),
+                    rhs: Box::new(tail_order),
                 }
             }
         }
 
-        impl_into_ordering!($($tail),*,);
+        impl_into_order!($($tail),*,);
     };
 }
 
-impl_into_ordering!(
+impl_into_order!(
     T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21,
     T22, T23, T24, T25, T26, T27, T28, T29, T30, T31, T32,
 );
