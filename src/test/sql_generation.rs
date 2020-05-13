@@ -612,9 +612,9 @@ fn raw_sql_select() {
 fn raw_sql_simple_select() {
     let (sql, mut binds) = users::table
         .select((
-            Selection::raw("countries.*"),
+            Select::raw("countries.*"),
             users::star,
-            Selection::raw("1 as one"),
+            Select::raw("1 as one"),
         ))
         .to_sql();
 

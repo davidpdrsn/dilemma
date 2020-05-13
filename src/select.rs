@@ -17,19 +17,17 @@ pub enum Select {
     CountStar(Selection),
     Simple(Selection),
     List(Vec<Selection>),
-    Raw(String),
 }
 
 impl Select {
-    pub fn raw(sql: &str) -> Self {
-        Select::Raw(sql.to_string())
+    pub fn raw(sql: &str) -> Selection {
+        Selection::Raw(sql.to_string())
     }
 }
 
 impl WriteSql for Select {
     fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Select::Raw(sql) => write!(f, "{}", sql),
             Select::Simple(inner) => inner.write_sql(f, bind_count),
             Select::CountStar(inner) => {
                 write!(f, "count(")?;
@@ -62,12 +60,6 @@ pub enum Selection {
     TableStar(Table),
     Column(Column),
     Raw(String),
-}
-
-impl Selection {
-    pub fn raw(sql: &str) -> Self {
-        Selection::Raw(sql.to_string())
-    }
 }
 
 impl From<Selection> for Select {
