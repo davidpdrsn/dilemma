@@ -2,7 +2,6 @@
 
 - More query methods
   - Select query parts
-    - `QueryDsl::join` without raw join. Should generate `JOIN ON ...`
     - EXPLAIN
     - EXPLAIN ANALYZE
     - ORDER BY [ NULL { FIRST | LAST } ]

@@ -166,7 +166,7 @@ impl<T> Query<T> {
                 });
             }
             JoinOn::Raw(sql) => {
-                self.joins.push(Join::RawWithKind { kind, sql });
+                self.joins.push(Join::RawWithKind(sql));
             }
         }
     }

@@ -10,7 +10,7 @@ pub trait QueryDsl<T> {
 
     fn or_filter(self, filter: impl Into<Filter>) -> Query<T>;
 
-    fn join(self, join: impl Into<Join>) -> Query<T>;
+    fn join(self, join: impl Into<JoinOn>) -> Query<T>;
 
     fn inner_join(self, join: impl Into<JoinOn>) -> Query<T>;
 
@@ -90,9 +90,9 @@ where
         query
     }
 
-    fn join(self, join: impl Into<Join>) -> Query<K> {
+    fn join(self, join: impl Into<JoinOn>) -> Query<K> {
         let mut query = self.into();
-        query.joins.push(join.into());
+        query.add_join(join.into(), JoinKind::Default);
         query
     }
 

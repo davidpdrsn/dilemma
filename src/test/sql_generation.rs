@@ -589,8 +589,9 @@ fn select_count_column() {
 #[test]
 fn raw_sql_select() {
     let query = users::table
-        .inner_join(JoinOn::raw("countries on countries.id = 1"))
+        .inner_join(Join::raw("INNER JOIN countries on countries.id = 1"))
         .join(Join::raw("left outer join countries on 1=1"))
+        .join(Join::raw("join users on 1=2"))
         .filter(Filter::raw("1 = 2 AND 1 not in (1, 2, 3)"))
         .group_by(Group::raw("users.id"))
         .having(Filter::raw("1 = 2"))
@@ -602,7 +603,7 @@ fn raw_sql_select() {
 
     assert_eq!(
         sql,
-        r#"SELECT users.* FROM "users" INNER JOIN countries on countries.id = 1 left outer join countries on 1=1 WHERE 1 = 2 AND 1 not in (1, 2, 3) GROUP BY users.id HAVING 1 = 2 ORDER BY id desc LIMIT 10 OFFSET -10"#
+        r#"SELECT users.* FROM "users" INNER JOIN countries on countries.id = 1 left outer join countries on 1=1 join users on 1=2 WHERE 1 = 2 AND 1 not in (1, 2, 3) GROUP BY users.id HAVING 1 = 2 ORDER BY id desc LIMIT 10 OFFSET -10"#
     );
     assert_eq!(binds.next(), None);
 }

@@ -10,10 +10,7 @@ pub enum Join {
         table: Table,
         filter: Filter,
     },
-    RawWithKind {
-        kind: JoinKind,
-        sql: String,
-    },
+    RawWithKind(String),
     Raw(String),
 }
 
@@ -30,8 +27,7 @@ impl WriteSql for Join {
                 write!(f, " ON ")?;
                 filter.write_sql(f, bind_count)?;
             }
-            Join::RawWithKind { kind, sql } => {
-                kind.write_sql(f, bind_count)?;
+            Join::RawWithKind(sql) => {
                 write!(f, "{}", sql)?;
             }
             Join::Raw(sql) => {
@@ -54,15 +50,15 @@ impl CollectBinds for Join {
                 table.collect_binds(binds);
                 filter.collect_binds(binds);
             }
-            Join::RawWithKind { kind: _, sql:_} => {}
+            Join::RawWithKind(_) => {}
             Join::Raw(_) => {}
         }
     }
 }
 
 impl Join {
-    pub fn raw(sql: &str) -> Self {
-        Join::Raw(sql.to_string())
+    pub fn raw(sql: &str) -> JoinOn {
+        JoinOn::Raw(sql.to_string())
     }
 }
 
@@ -88,12 +84,6 @@ impl WriteSql for JoinKind {
 pub enum JoinOn {
     Known { table: Table, filter: Filter },
     Raw(String),
-}
-
-impl JoinOn {
-    pub fn raw(sql: &str) -> Self {
-        JoinOn::Raw(sql.to_string())
-    }
 }
 
 pub trait JoinOnDsl {
