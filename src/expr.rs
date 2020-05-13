@@ -1,5 +1,5 @@
 use crate::binds::BindCount;
-use crate::binds::{BindsInternal, CollectBinds, Bind};
+use crate::binds::{Bind, BindsInternal, CollectBinds};
 use crate::sql_types::{Integer, Text};
 use crate::{Column, Filter, WriteSql};
 use std::fmt::{self, Write};

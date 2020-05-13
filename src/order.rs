@@ -1,20 +1,123 @@
 use crate::binds::BindCount;
 use crate::binds::{BindsInternal, CollectBinds};
 use crate::{Column, WriteSql};
+use itertools::{Itertools, Position};
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone)]
 pub enum Order {
-    Default(Column),
-    Asc(Column),
-    Desc(Column),
-    And { lhs: Box<Order>, rhs: Box<Order> },
-    Raw(String),
+    Simple(Ordering),
+    List(Vec<Ordering>),
 }
 
 impl Order {
-    pub fn raw(sql: &str) -> Self {
-        Self::Raw(sql.to_string())
+    pub(crate) fn add(&mut self, ordering: Ordering) {
+        match self {
+            Order::Simple(inner) => {
+                *self = Order::List(vec![ordering, inner.clone()]);
+            }
+            Order::List(inners) => {
+                inners.push(ordering);
+            }
+        }
+    }
+
+    pub(crate) fn extend(&mut self, mut ordering: Vec<Ordering>) {
+        match self {
+            Order::Simple(inner) => {
+                ordering.push(inner.clone());
+                *self = Order::List(ordering);
+            }
+            Order::List(inners) => {
+                inners.extend(ordering);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Ordering {
+    Default(Column, Option<NullsPosition>),
+    Asc(Column, Option<NullsPosition>),
+    Desc(Column, Option<NullsPosition>),
+    Raw(String),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum NullsPosition {
+    First,
+    Last,
+}
+
+impl Order {
+    pub fn raw(sql: &str) -> Ordering {
+        Ordering::Raw(sql.to_string())
+    }
+}
+
+impl WriteSql for Order {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        match self {
+            Order::Simple(inner) => inner.write_sql(f, bind_count),
+            Order::List(orderings) => {
+                for ordering in orderings.into_iter().with_position() {
+                    match ordering {
+                        Position::First(col) | Position::Middle(col) => {
+                            col.write_sql(f, bind_count)?;
+                            write!(f, ", ")?;
+                        }
+                        Position::Last(col) | Position::Only(col) => {
+                            col.write_sql(f, bind_count)?;
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl WriteSql for Ordering {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        let nulls_position = match self {
+            Ordering::Default(col, nulls_position) => {
+                col.write_sql(f, bind_count)?;
+                nulls_position
+            }
+            Ordering::Asc(col, nulls_position) => {
+                col.write_sql(f, bind_count)?;
+                write!(f, " ASC")?;
+                nulls_position
+            }
+            Ordering::Desc(col, nulls_position) => {
+                col.write_sql(f, bind_count)?;
+                write!(f, " DESC")?;
+                nulls_position
+            }
+            Ordering::Raw(sql) => {
+                write!(f, "{}", sql)?;
+                &None
+            }
+        };
+
+        match nulls_position {
+            Some(NullsPosition::First) => {
+                write!(f, " NULLS FIRST")?;
+            }
+            Some(NullsPosition::Last) => {
+                write!(f, " NULLS LAST")?;
+            }
+            None => {}
+        }
+
+        Ok(())
+    }
+}
+
+impl From<Ordering> for Order {
+    fn from(ordering: Ordering) -> Self {
+        Order::Simple(ordering)
     }
 }
 
@@ -23,29 +126,54 @@ where
     T: Into<Column>,
 {
     fn from(col: T) -> Self {
-        Order::Default(col.into())
+        Order::Simple(Ordering::from(col))
     }
 }
 
-impl WriteSql for Order {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl<T> From<T> for Ordering
+where
+    T: Into<Column>,
+{
+    fn from(col: T) -> Self {
+        Ordering::Default(col.into(), None)
+    }
+}
+
+pub trait OrderDsl {
+    fn asc(self) -> Ordering;
+
+    fn desc(self) -> Ordering;
+}
+
+impl<T> OrderDsl for T
+where
+    T: Into<Column>,
+{
+    fn asc(self) -> Ordering {
+        Ordering::Asc(self.into(), None)
+    }
+
+    fn desc(self) -> Ordering {
+        Ordering::Desc(self.into(), None)
+    }
+}
+
+impl OrderDsl for Ordering {
+    fn asc(self) -> Ordering {
         match self {
-            Order::Default(col) => col.write_sql(f, bind_count),
-            Order::Asc(col) => {
-                col.write_sql(f, bind_count)?;
-                write!(f, " ASC")
-            }
-            Order::Desc(col) => {
-                col.write_sql(f, bind_count)?;
-                write!(f, " DESC")
-            }
-            Order::And { lhs, rhs } => {
-                lhs.write_sql(f, bind_count)?;
-                write!(f, ", ")?;
-                rhs.write_sql(f, bind_count)?;
-                Ok(())
-            }
-            Order::Raw(sql) => write!(f, "{}", sql),
+            Ordering::Default(col, nulls)
+            | Ordering::Asc(col, nulls)
+            | Ordering::Desc(col, nulls) => Ordering::Asc(col, nulls),
+            Ordering::Raw(sql) => Ordering::Raw(sql),
+        }
+    }
+
+    fn desc(self) -> Ordering {
+        match self {
+            Ordering::Default(col, nulls)
+            | Ordering::Asc(col, nulls)
+            | Ordering::Desc(col, nulls) => Ordering::Desc(col, nulls),
+            Ordering::Raw(sql) => Ordering::Raw(sql),
         }
     }
 }
@@ -54,22 +182,52 @@ impl CollectBinds for Order {
     fn collect_binds(&self, _: &mut BindsInternal) {}
 }
 
-pub trait OrderDsl {
-    fn asc(self) -> Order;
+pub trait NullsPositionDsl {
+    fn nulls_first(self) -> Ordering;
 
-    fn desc(self) -> Order;
+    fn nulls_last(self) -> Ordering;
 }
 
-impl<T> OrderDsl for T
+impl<T> NullsPositionDsl for T
 where
     T: Into<Column>,
 {
-    fn asc(self) -> Order {
-        Order::Asc(self.into())
+    fn nulls_first(self) -> Ordering {
+        Ordering::Default(self.into(), Some(NullsPosition::First))
     }
 
-    fn desc(self) -> Order {
-        Order::Desc(self.into())
+    fn nulls_last(self) -> Ordering {
+        Ordering::Default(self.into(), Some(NullsPosition::Last))
+    }
+}
+
+impl NullsPositionDsl for Ordering {
+    fn nulls_first(self) -> Ordering {
+        match self {
+            Ordering::Default(inner, _) => Ordering::Default(inner, Some(NullsPosition::First)),
+            Ordering::Asc(inner, _) => Ordering::Asc(inner, Some(NullsPosition::First)),
+            Ordering::Desc(inner, _) => Ordering::Desc(inner, Some(NullsPosition::First)),
+            Ordering::Raw(sql) => Ordering::Raw(sql),
+        }
+    }
+
+    fn nulls_last(self) -> Ordering {
+        match self {
+            Ordering::Default(inner, _) => Ordering::Default(inner, Some(NullsPosition::Last)),
+            Ordering::Asc(inner, _) => Ordering::Asc(inner, Some(NullsPosition::Last)),
+            Ordering::Desc(inner, _) => Ordering::Desc(inner, Some(NullsPosition::Last)),
+            Ordering::Raw(sql) => Ordering::Raw(sql),
+        }
+    }
+}
+
+#[allow(warnings)]
+impl<T> Into<Order> for (T,)
+where
+    T: Into<Ordering>,
+{
+    fn into(self) -> Order {
+        Order::Simple(self.0.into())
     }
 }
 
@@ -80,15 +238,13 @@ macro_rules! impl_into_order {
         #[allow(warnings)]
         impl<$first, $second> Into<Order> for ($first, $second)
         where
-            $first: Into<Order>,
-            $second: Into<Order>,
+            $first: Into<Ordering>,
+            $second: Into<Ordering>,
         {
             fn into(self) -> Order {
-                let (lhs, rhs) = self;
-                Order::And {
-                    lhs: Box::new(lhs.into()),
-                    rhs: Box::new(rhs.into()),
-                }
+                let ($first, $second) = self;
+                let mut cols = vec![$first.into(), $second.into()];
+                Order::List(cols)
             }
         }
     };
@@ -99,19 +255,16 @@ macro_rules! impl_into_order {
         #[allow(warnings)]
         impl<$head, $($tail),*> Into<Order> for ($head, $($tail),*)
         where
-            $head: Into<Order>,
-            $( $tail: Into<Order> ),*
+            $head: Into<Ordering>,
+            $( $tail: Into<Ordering> ),*
         {
             fn into(self) -> Order {
-                let (
-                    $head, $($tail),*
-                ) = self;
-                let tail_order: Order = ($($tail),*).into();
-
-                Order::And {
-                    lhs: Box::new($head.into()),
-                    rhs: Box::new(tail_order),
-                }
+                let ($head, $($tail),*) = self;
+                let mut cols = vec![
+                    $head.into(),
+                    $( $tail.into(), )*
+                ];
+                Order::List(cols)
             }
         }
 

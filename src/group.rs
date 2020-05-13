@@ -6,10 +6,7 @@ use std::fmt::{self, Write};
 #[derive(Debug, Clone)]
 pub enum Group {
     Col(Column),
-    And {
-        lhs: Box<Group>,
-        rhs: Box<Group>,
-    },
+    And { lhs: Box<Group>, rhs: Box<Group> },
     Raw(String),
 }
 
@@ -38,13 +35,22 @@ impl WriteSql for Group {
                 rhs.write_sql(f, bind_count)?;
                 Ok(())
             }
-            Group::Raw(sql) => write!(f, "{}", sql)
+            Group::Raw(sql) => write!(f, "{}", sql),
         }
     }
 }
 
 impl CollectBinds for Group {
     fn collect_binds(&self, _: &mut BindsInternal) {}
+}
+
+impl<T> Into<Group> for (T,)
+where
+    T: Into<Group>,
+{
+    fn into(self) -> Group {
+        self.0.into()
+    }
 }
 
 macro_rules! impl_into_group {

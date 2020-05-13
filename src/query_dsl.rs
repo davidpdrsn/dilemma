@@ -157,12 +157,15 @@ where
 
     fn then_order_by(self, order: impl Into<Order>) -> Query<K> {
         let mut query = self.into();
-        let new_order = match query.order.take() {
-            Some(lhs) => Order::And {
-                lhs: Box::new(lhs),
-                rhs: Box::new(order.into()),
-            },
-            None => order.into(),
+        let mut new_order = order.into();
+        match query.order.take() {
+            None => {}
+            Some(Order::Simple(ordering)) => {
+                new_order.add(ordering);
+            }
+            Some(Order::List(ordering)) => {
+                new_order.extend(ordering);
+            }
         };
         query.order = Some(new_order);
         query

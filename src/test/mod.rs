@@ -1,2 +1,2 @@
-mod sql_generation;
 mod scopes;
+mod sql_generation;

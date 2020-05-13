@@ -412,12 +412,13 @@ fn adding_overriding_order() {
     let (query, mut binds) = users::table
         .order_by(users::id)
         .then_order_by(users::name)
+        .then_order_by(users::id)
         .select(users::star)
         .to_sql();
 
     assert_eq!(
         query,
-        r#"SELECT "users".* FROM "users" ORDER BY "users"."id", "users"."name""#
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id", "users"."name", "users"."id""#
     );
     assert_eq!(binds.next(), None);
 }
@@ -618,6 +619,86 @@ fn raw_sql_simple_select() {
         ))
         .to_sql();
 
-    assert_eq!(sql, r#"SELECT countries.*, "users".*, 1 as one FROM "users""#);
+    assert_eq!(
+        sql,
+        r#"SELECT countries.*, "users".*, 1 as one FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_by_nulls_first() {
+    let (query, mut binds) = users::table
+        .order_by(users::id.nulls_first())
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" NULLS FIRST"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_by_nulls_last() {
+    let (query, mut binds) = users::table
+        .order_by(users::id.nulls_last())
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" NULLS LAST"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_by_desc_nulls_first() {
+    let (query, mut binds) = users::table
+        .order_by(users::id.desc().nulls_first())
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" DESC NULLS FIRST"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_by_nulls_first_desc() {
+    let (query, mut binds) = users::table
+        .order_by(users::id.nulls_first().desc())
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."id" DESC NULLS FIRST"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn order_complex() {
+    let (query, mut binds) = users::table
+        .order_by((
+            users::name,
+            users::name.desc(),
+            users::name.desc().nulls_first(),
+            users::name.desc().nulls_last(),
+            users::name.nulls_first().asc(),
+            users::name.nulls_last().asc(),
+        ))
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        query,
+        r#"SELECT "users".* FROM "users" ORDER BY "users"."name", "users"."name" DESC, "users"."name" DESC NULLS FIRST, "users"."name" DESC NULLS LAST, "users"."name" ASC NULLS FIRST, "users"."name" ASC NULLS LAST"#
+    );
     assert_eq!(binds.next(), None);
 }

@@ -4,7 +4,6 @@
   - Select query parts
     - EXPLAIN
     - EXPLAIN ANALYZE
-    - ORDER BY [ NULL { FIRST | LAST } ]
     - DISTINCT
     - DISTINCT ON
     - UNION [ ALL | DISTINCT ]

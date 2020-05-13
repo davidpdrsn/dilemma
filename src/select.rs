@@ -1,7 +1,6 @@
 use crate::binds::BindCount;
 use crate::{Column, Table, WriteSql};
-use itertools::Itertools;
-use itertools::Position;
+use itertools::{Itertools, Position};
 use std::fmt::{self, Write};
 
 pub fn star() -> Selection {
@@ -79,6 +78,15 @@ impl WriteSql for Selection {
             }
             Selection::Column(col) => col.write_sql(f, bind_count),
         }
+    }
+}
+
+impl<T> Into<Select> for (T,)
+where
+    T: Into<Selection>,
+{
+    fn into(self) -> Select {
+        Select::Simple(self.0.into())
     }
 }
 

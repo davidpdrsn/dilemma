@@ -33,7 +33,7 @@ pub use group::Group;
 pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
 pub use limit::Limit;
 pub use offset::Offset;
-pub use order::{Order, OrderDsl};
+pub use order::{NullsPosition, NullsPositionDsl, Order, OrderDsl};
 pub use query_dsl::QueryDsl;
 pub use select::{count, star, Select, Selection};
 
