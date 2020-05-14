@@ -34,6 +34,10 @@ pub trait QueryDsl<T> {
 
     fn offset(self, offset: impl Into<Offset>) -> Query<T>;
 
+    fn distinct(self) -> Query<T>;
+
+    fn distinct_on(self, cols: impl IntoColumns) -> Query<T>;
+
     fn for_update(self) -> Query<T>;
 
     fn skip_locked(self) -> Query<T>;
@@ -183,6 +187,18 @@ where
         query
     }
 
+    fn distinct(self) -> Query<K> {
+        let mut query = self.into();
+        query.distinct = Some(Distinct::EachRow);
+        query
+    }
+
+    fn distinct_on(self, cols: impl IntoColumns) -> Query<K> {
+        let mut query = self.into();
+        query.distinct = Some(Distinct::On(cols.into_columns()));
+        query
+    }
+
     fn for_update(self) -> Query<K> {
         let mut query = self.into();
         query.row_locking.for_update = true;
@@ -238,6 +254,7 @@ where
         let group = rhs.group.or(lhs.group);
         let having = rhs.having.or(lhs.having);
         let row_locking = lhs.row_locking.or(rhs.row_locking);
+        let distinct = lhs.distinct.or(rhs.distinct);
 
         Query {
             from: lhs.from,
@@ -249,6 +266,7 @@ where
             limit,
             offset,
             row_locking,
+            distinct,
             _marker: lhs._marker,
         }
     }

@@ -11,6 +11,7 @@ use write_sql::WriteSql;
 mod test;
 
 mod binds;
+mod distinct;
 mod expr;
 mod filter;
 mod from;
@@ -28,6 +29,7 @@ mod write_sql;
 pub mod sql_types;
 
 pub use binds::{Bind, Binds};
+pub use distinct::Distinct;
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
 pub use from::{from, FromClause, IntoSubQuery, SubQuery};
@@ -89,6 +91,7 @@ pub struct Query<T> {
     limit: Option<Limit>,
     offset: Option<Offset>,
     row_locking: RowLocking,
+    distinct: Option<Distinct>,
     _marker: PhantomData<T>,
 }
 
@@ -104,6 +107,7 @@ impl<T> Query<T> {
             limit,
             offset,
             row_locking,
+            distinct,
             _marker,
         } = self;
 
@@ -117,6 +121,7 @@ impl<T> Query<T> {
             limit,
             offset,
             row_locking,
+            distinct,
             _marker: PhantomData,
         }
     }
@@ -186,6 +191,11 @@ impl<T> Query<T> {
         self
     }
 
+    pub fn remove_distinct(mut self) -> Self {
+        self.distinct = None;
+        self
+    }
+
     fn add_join(&mut self, join: JoinOn, kind: JoinKind) {
         match join {
             JoinOn::Known { table, filter } => {
@@ -216,6 +226,7 @@ where
             order: None,
             limit: None,
             offset: None,
+            distinct: None,
             row_locking: RowLocking::new(),
             _marker: PhantomData,
         }
@@ -240,6 +251,11 @@ impl<T> QueryWithSelect<T> {
     fn to_sql_string<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) {
         let result = (|| -> fmt::Result {
             write!(f, "SELECT ")?;
+
+            if let Some(distinct) = &self.query.distinct {
+                distinct.write_sql(f, bind_count)?;
+            }
+
             self.selection.write_sql(f, bind_count)?;
 
             write!(f, " FROM ")?;
@@ -361,3 +377,69 @@ impl CollectBinds for Vec<Join> {
         }
     }
 }
+
+pub trait IntoColumns {
+    fn into_columns(self) -> Vec<Column>;
+}
+
+impl<T> IntoColumns for T
+where
+    T: Into<Column>,
+{
+    fn into_columns(self) -> Vec<Column> {
+        vec![self.into()]
+    }
+}
+
+impl<T> IntoColumns for (T,)
+where
+    T: Into<Column>,
+{
+    fn into_columns(self) -> Vec<Column> {
+        vec![self.0.into()]
+    }
+}
+
+macro_rules! impl_into_columns {
+    (
+        $first:ident, $second:ident,
+    ) => {
+        #[allow(warnings)]
+        impl<$first, $second> IntoColumns for ($first, $second)
+        where
+            $first: Into<Column>,
+            $second: Into<Column>,
+        {
+            fn into_columns(self) -> Vec<Column> {
+                let ($first, $second) = self;
+                vec![$first.into(), $second.into()]
+            }
+        }
+    };
+
+    (
+        $head:ident, $($tail:ident),*,
+    ) => {
+        #[allow(warnings)]
+        impl<$head, $($tail),*> IntoColumns for ($head, $($tail),*)
+        where
+            $head: Into<Column>,
+            $( $tail: Into<Column> ),*
+        {
+            fn into_columns(self) -> Vec<Column> {
+                let ($head, $($tail),*) = self;
+                vec![
+                    $head.into(),
+                    $( $tail.into(), )*
+                ]
+            }
+        }
+
+        impl_into_columns!($($tail),*,);
+    };
+}
+
+impl_into_columns!(
+    T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21,
+    T22, T23, T24, T25, T26, T27, T28, T29, T30, T31, T32,
+);

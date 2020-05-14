@@ -4,8 +4,6 @@
   - Select query parts
     - EXPLAIN
     - EXPLAIN ANALYZE
-    - DISTINCT
-    - DISTINCT ON
     - UNION [ ALL | DISTINCT ]
     - INTERSECT [ ALL | DISTINCT ]
     - EXCEPT [ ALL | DISTINCT ]

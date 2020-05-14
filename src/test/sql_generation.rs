@@ -704,7 +704,7 @@ fn order_complex() {
 }
 
 #[test]
-fn simple_sub_query() {
+fn sub_queries() {
     let sub_query = users::table.filter(users::id.gt(1)).select(users::star);
 
     let (sql, mut binds) = from(sub_query.alias("users"))
@@ -719,5 +719,50 @@ fn simple_sub_query() {
     );
     assert_eq!(binds.next(), Some(Bind::I32(1)));
     assert_eq!(binds.next(), Some(Bind::I32(10)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn distinct() {
+    let (sql, mut binds) = users::table
+        .distinct()
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT DISTINCT "users".* FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn distinct_on() {
+    let (sql, mut binds) = users::table
+        .distinct_on(users::id)
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT DISTINCT ON ("users"."id") "users".* FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn distinct_on_many() {
+    let (sql, mut binds) = users::table
+        .distinct_on((
+            users::id,
+            users::name,
+        ))
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT DISTINCT ON ("users"."id", "users"."name") "users".* FROM "users""#
+    );
     assert_eq!(binds.next(), None);
 }
