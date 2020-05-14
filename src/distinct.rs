@@ -8,13 +8,13 @@ pub enum Distinct {
     On(Vec<Column>),
 }
 
-impl WriteSql for Distinct {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Distinct {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Distinct::EachRow => write!(f, "DISTINCT "),
             Distinct::On(cols) => {
                 write!(f, "DISTINCT ON (")?;
-                cols.write_sql(f, bind_count)?;
+                cols.iter().write_sql(f, bind_count)?;
                 write!(f, ") ")?;
                 Ok(())
             }

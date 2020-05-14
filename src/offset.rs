@@ -23,8 +23,8 @@ where
     }
 }
 
-impl WriteSql for Offset {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Offset {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Offset::Count(_) => bind_count.write_sql(f),
             Offset::Raw(sql) => write!(f, "{}", sql),

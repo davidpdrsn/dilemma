@@ -1,15 +1,18 @@
 use crate::binds::BindCount;
-use crate::Column;
 use itertools::{Itertools, Position};
 use std::fmt::{self, Write};
 
 pub trait WriteSql {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result;
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result;
 }
 
-impl WriteSql for Vec<Column> {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
-        for col in self.into_iter().with_position() {
+impl<'a, I, T: 'a> WriteSql for I
+where
+    I: Iterator<Item = &'a T>,
+    &'a T: WriteSql
+{
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        for col in self.with_position() {
             match col {
                 Position::First(col) | Position::Middle(col) => {
                     col.write_sql(f, bind_count)?;

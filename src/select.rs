@@ -24,8 +24,8 @@ impl Select {
     }
 }
 
-impl WriteSql for Select {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Select {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Select::Simple(inner) => inner.write_sql(f, bind_count),
             Select::CountStar(inner) => {
@@ -35,18 +35,7 @@ impl WriteSql for Select {
                 Ok(())
             }
             Select::List(selections) => {
-                for item in selections.into_iter().with_position() {
-                    match item {
-                        Position::First(col) | Position::Middle(col) => {
-                            col.write_sql(f, bind_count)?;
-                            write!(f, ", ")?;
-                        }
-                        Position::Last(col) | Position::Only(col) => {
-                            col.write_sql(f, bind_count)?;
-                        }
-                    }
-                }
-
+                selections.iter().write_sql(f, bind_count)?;
                 Ok(())
             }
         }
@@ -67,8 +56,8 @@ impl From<Selection> for Select {
     }
 }
 
-impl WriteSql for Selection {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Selection {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Selection::Raw(inner) => write!(f, "{}", inner),
             Selection::Star => write!(f, "*"),

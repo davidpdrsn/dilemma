@@ -32,8 +32,8 @@ impl<T> From<SubQuery<T>> for FromClause<T> {
     }
 }
 
-impl<T> WriteSql for FromClause<T> {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl<T> WriteSql for &FromClause<T> {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             FromClause::Table(table) => table.write_sql(f, bind_count),
             FromClause::SubQuery(sub_query) => sub_query.write_sql(f, bind_count),
@@ -80,8 +80,8 @@ impl<T> SubQuery<T> {
     }
 }
 
-impl<T> WriteSql for SubQuery<T> {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl<T> WriteSql for &SubQuery<T> {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         write!(f, "(")?;
         self.query.write_sql(f, bind_count)?;
         write!(f, ") \"{}\"", self.alias)?;

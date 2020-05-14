@@ -138,8 +138,8 @@ pub enum Expr {
     String(String),
 }
 
-impl WriteSql for Expr {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Expr {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Expr::Column(col) => col.write_sql(f, bind_count),
             Expr::I32(_) => bind_count.write_sql(f),
@@ -168,8 +168,8 @@ pub enum BinOp {
     Le,
 }
 
-impl WriteSql for BinOp {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+impl WriteSql for &BinOp {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         match self {
             BinOp::Eq => write!(f, " = "),
             BinOp::Ne => write!(f, " != "),

@@ -41,8 +41,8 @@ impl CollectBinds for RowLocking {
     fn collect_binds(&self, _: &mut BindsInternal) {}
 }
 
-impl WriteSql for RowLocking {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+impl WriteSql for &RowLocking {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         if self.for_update {
             write!(f, " FOR UPDATE")?;
         }

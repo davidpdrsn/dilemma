@@ -23,8 +23,8 @@ where
     }
 }
 
-impl WriteSql for Limit {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Limit {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Limit::Count(_) => bind_count.write_sql(f),
             Limit::Raw(sql) => write!(f, "{}", sql),

@@ -46,8 +46,8 @@ pub struct Table {
     name: &'static str,
 }
 
-impl WriteSql for Table {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Table {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         write!(f, "\"{}\"", self.name)
     }
 }
@@ -74,8 +74,8 @@ impl Column {
     }
 }
 
-impl WriteSql for Column {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Column {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         write!(f, "\"{}\".\"{}\"", self.table, self.name)
     }
 }
@@ -320,8 +320,8 @@ impl<T> QueryWithSelect<T> {
     }
 }
 
-impl<T> WriteSql for QueryWithSelect<T> {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl<T> WriteSql for &QueryWithSelect<T> {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         self.to_sql_string(f, bind_count);
         Ok(())
     }

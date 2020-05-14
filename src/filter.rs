@@ -11,8 +11,8 @@ pub enum Filter {
     Raw(String),
 }
 
-impl WriteSql for Filter {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Filter {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Filter::BinOp { lhs, op, rhs } => {
                 lhs.write_sql(f, bind_count)?;

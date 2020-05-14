@@ -25,8 +25,8 @@ where
     }
 }
 
-impl WriteSql for Group {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Group {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Group::Col(col) => col.write_sql(f, bind_count),
             Group::And { lhs, rhs } => {

@@ -55,31 +55,20 @@ impl Order {
     }
 }
 
-impl WriteSql for Order {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Order {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Order::Simple(inner) => inner.write_sql(f, bind_count),
             Order::List(orderings) => {
-                for ordering in orderings.into_iter().with_position() {
-                    match ordering {
-                        Position::First(col) | Position::Middle(col) => {
-                            col.write_sql(f, bind_count)?;
-                            write!(f, ", ")?;
-                        }
-                        Position::Last(col) | Position::Only(col) => {
-                            col.write_sql(f, bind_count)?;
-                        }
-                    }
-                }
-
+                orderings.iter().write_sql(f, bind_count)?;
                 Ok(())
             }
         }
     }
 }
 
-impl WriteSql for Ordering {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Ordering {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         let nulls_position = match self {
             Ordering::Default(col, nulls_position) => {
                 col.write_sql(f, bind_count)?;

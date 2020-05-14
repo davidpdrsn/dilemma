@@ -14,8 +14,8 @@ pub enum Join {
     Raw(String),
 }
 
-impl WriteSql for Join {
-    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+impl WriteSql for &Join {
+    fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
             Join::Known {
                 kind,
@@ -69,8 +69,8 @@ pub enum JoinKind {
     Outer,
 }
 
-impl WriteSql for JoinKind {
-    fn write_sql<W: Write>(&self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+impl WriteSql for &JoinKind {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
         match self {
             JoinKind::Default => write!(f, "JOIN ")?,
             JoinKind::Inner => write!(f, "INNER JOIN ")?,
