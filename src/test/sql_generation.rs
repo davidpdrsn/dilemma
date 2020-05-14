@@ -702,3 +702,13 @@ fn order_complex() {
     );
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn simple_sub_query() {
+    let sub_query = users::table.filter(users::id.gt(1)).select(users::star);
+
+    // from(sub_query.alias("users"))
+    //     .limit(10)
+    //     .order_by(users::id.desc().nulls_first())
+    //     .select(users::id);
+}

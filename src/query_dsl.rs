@@ -240,7 +240,7 @@ where
         let row_locking = lhs.row_locking.or(rhs.row_locking);
 
         Query {
-            table: lhs.table,
+            from: lhs.from,
             filter,
             joins: lhs.joins,
             group,

@@ -13,6 +13,7 @@ mod test;
 mod binds;
 mod expr;
 mod filter;
+mod from;
 mod group;
 mod join;
 mod limit;
@@ -29,6 +30,7 @@ pub mod sql_types;
 pub use binds::{Bind, Binds};
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
+pub use from::FromClause;
 pub use group::Group;
 pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
 pub use limit::Limit;
@@ -78,7 +80,7 @@ impl WriteSql for Column {
 
 #[derive(Debug, Clone)]
 pub struct Query<T> {
-    table: Table,
+    from: FromClause,
     joins: Vec<Join>,
     filter: Option<Filter>,
     group: Option<Group>,
@@ -175,7 +177,7 @@ impl<T> Query<T> {
 impl<T> From<Table> for Query<T> {
     fn from(table: Table) -> Self {
         Self {
-            table: table.into(),
+            from: table.into(),
             filter: None,
             joins: Vec::new(),
             group: None,
@@ -211,7 +213,7 @@ impl<T> QueryWithSelect<T> {
             self.selection.write_sql(&mut f, bind_count)?;
 
             write!(f, " FROM ")?;
-            self.query.table.write_sql(&mut f, bind_count)?;
+            self.query.from.write_sql(&mut f, bind_count)?;
 
             for join in &self.query.joins {
                 write!(f, " ")?;
@@ -267,7 +269,7 @@ impl<T> QueryWithSelect<T> {
 
 impl<T> CollectBinds for Query<T> {
     fn collect_binds(&self, binds: &mut BindsInternal) {
-        self.table.collect_binds(binds);
+        self.from.collect_binds(binds);
         self.joins.collect_binds(binds);
 
         if let Some(filter) = &self.filter {
