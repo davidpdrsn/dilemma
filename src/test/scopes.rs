@@ -27,7 +27,17 @@ where
 
     fn in_country(self, country_id: i32) -> Query<users::table> {
         self.inner_join(countries::table.on(countries::id.eq(users::country_id)))
-            .filter(countries::id.eq(country_id))
+            .merge(countries::table.with_id(country_id))
+    }
+}
+
+#[ext(name = CountryScopes)]
+impl<T> T
+where
+    T: Into<Query<countries::table>>,
+{
+    fn with_id(self, country_id: i32) -> Query<countries::table> {
+        self.filter(countries::id.eq(country_id))
     }
 }
 

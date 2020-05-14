@@ -23,8 +23,7 @@
     - ne all (not in)
     - not between
   - Sub queries
-    - From clause
-    - Probably else where, if possible
+    - In joins
   - Select expression `SELECT 1 as one`
   - Raw SQL nodes
   - Add all methods from https://docs.rs/diesel/1.4.4/diesel/query_dsl/trait.QueryDsl.html

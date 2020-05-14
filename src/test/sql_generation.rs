@@ -707,8 +707,17 @@ fn order_complex() {
 fn simple_sub_query() {
     let sub_query = users::table.filter(users::id.gt(1)).select(users::star);
 
-    // from(sub_query.alias("users"))
-    //     .limit(10)
-    //     .order_by(users::id.desc().nulls_first())
-    //     .select(users::id);
+    let (sql, mut binds) = from(sub_query.alias("users"))
+        .limit(10)
+        .order_by(users::id.desc().nulls_first())
+        .select(users::id)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT "users"."id" FROM (SELECT "users".* FROM "users" WHERE "users"."id" > $1) "users" ORDER BY "users"."id" DESC NULLS FIRST LIMIT $2"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
+    assert_eq!(binds.next(), None);
 }

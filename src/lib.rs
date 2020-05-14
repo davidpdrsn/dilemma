@@ -30,7 +30,7 @@ pub mod sql_types;
 pub use binds::{Bind, Binds};
 pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
-pub use from::FromClause;
+pub use from::{from, FromClause, IntoSubQuery, SubQuery};
 pub use group::Group;
 pub use join::{Join, JoinKind, JoinOn, JoinOnDsl};
 pub use limit::Limit;
@@ -80,7 +80,7 @@ impl WriteSql for Column {
 
 #[derive(Debug, Clone)]
 pub struct Query<T> {
-    from: FromClause,
+    from: FromClause<T>,
     joins: Vec<Join>,
     filter: Option<Filter>,
     group: Option<Group>,
@@ -93,6 +93,34 @@ pub struct Query<T> {
 }
 
 impl<T> Query<T> {
+    pub fn cast_to<K>(self) -> Query<K> {
+        let Query {
+            from,
+            joins,
+            filter,
+            group,
+            having,
+            order,
+            limit,
+            offset,
+            row_locking,
+            _marker,
+        } = self;
+
+        Query {
+            from: from.cast_to::<K>(),
+            joins,
+            filter,
+            group,
+            having,
+            order,
+            limit,
+            offset,
+            row_locking,
+            _marker: PhantomData,
+        }
+    }
+
     pub fn remove_joins(mut self) -> Self {
         self.joins.clear();
         self
@@ -174,10 +202,13 @@ impl<T> Query<T> {
     }
 }
 
-impl<T> From<Table> for Query<T> {
-    fn from(table: Table) -> Self {
+impl<T, K> From<K> for Query<T>
+where
+    K: Into<FromClause<T>>,
+{
+    fn from(from: K) -> Self {
         Self {
-            from: table.into(),
+            from: from.into(),
             filter: None,
             joins: Vec::new(),
             group: None,
@@ -191,7 +222,7 @@ impl<T> From<Table> for Query<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QueryWithSelect<T> {
     query: Query<T>,
     selection: Select,
@@ -200,70 +231,89 @@ pub struct QueryWithSelect<T> {
 impl<T> QueryWithSelect<T> {
     pub fn to_sql(self) -> (String, Binds) {
         let mut bind_count = BindCount::new();
-        let sql = self.to_sql_string(&mut bind_count);
+        let mut sql = String::new();
+        self.to_sql_string(&mut sql, &mut bind_count);
         let binds = self.collect_binds(&mut bind_count);
         (sql, binds)
     }
 
-    fn to_sql_string(&self, bind_count: &mut BindCount) -> String {
-        let mut f = String::new();
-
+    fn to_sql_string<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) {
         let result = (|| -> fmt::Result {
             write!(f, "SELECT ")?;
-            self.selection.write_sql(&mut f, bind_count)?;
+            self.selection.write_sql(f, bind_count)?;
 
             write!(f, " FROM ")?;
-            self.query.from.write_sql(&mut f, bind_count)?;
+            self.query.from.write_sql(f, bind_count)?;
 
             for join in &self.query.joins {
                 write!(f, " ")?;
-                join.write_sql(&mut f, bind_count)?;
+                join.write_sql(f, bind_count)?;
             }
 
             if let Some(filter) = &self.query.filter {
                 write!(f, " WHERE ")?;
-                filter.write_sql(&mut f, bind_count)?;
+                filter.write_sql(f, bind_count)?;
             }
 
             if let Some(group) = &self.query.group {
                 write!(f, " GROUP BY ")?;
-                group.write_sql(&mut f, bind_count)?;
+                group.write_sql(f, bind_count)?;
             }
 
             if let Some(having) = &self.query.having {
                 write!(f, " HAVING ")?;
-                having.write_sql(&mut f, bind_count)?;
+                having.write_sql(f, bind_count)?;
             }
 
             if let Some(order) = &self.query.order {
                 write!(f, " ORDER BY ")?;
-                order.write_sql(&mut f, bind_count)?;
+                order.write_sql(f, bind_count)?;
             }
 
             if let Some(limit) = &self.query.limit {
                 write!(f, " LIMIT ")?;
-                limit.write_sql(&mut f, bind_count)?;
+                limit.write_sql(f, bind_count)?;
             }
 
             if let Some(offset) = &self.query.offset {
                 write!(f, " OFFSET ")?;
-                offset.write_sql(&mut f, bind_count)?;
+                offset.write_sql(f, bind_count)?;
             }
 
-            self.query.row_locking.write_sql(&mut f, bind_count)?;
+            self.query.row_locking.write_sql(f, bind_count)?;
 
             Ok(())
         })();
 
         result.expect("WriteSql should never fail");
-
-        f
     }
 
     fn collect_binds(&self, bind_count: &mut BindCount) -> Binds {
         let mut binds = BindsInternal::with_capacity(bind_count.count());
         self.query.collect_binds(&mut binds);
         Binds::from(binds)
+    }
+
+    pub fn cast_to<K>(self) -> QueryWithSelect<K> {
+        let QueryWithSelect { query, selection } = self;
+
+        QueryWithSelect {
+            query: query.cast_to::<K>(),
+            selection,
+        }
+    }
+}
+
+impl<T> WriteSql for QueryWithSelect<T> {
+    fn write_sql<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
+        self.to_sql_string(f, bind_count);
+        Ok(())
+    }
+}
+
+impl<T> CollectBinds for Box<QueryWithSelect<T>> {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        self.query.collect_binds(binds)
     }
 }
 

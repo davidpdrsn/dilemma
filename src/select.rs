@@ -11,7 +11,7 @@ pub fn count(selection: impl Into<Selection>) -> Select {
     Select::CountStar(selection.into())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Select {
     CountStar(Selection),
     Simple(Selection),
@@ -53,7 +53,7 @@ impl WriteSql for Select {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Selection {
     Star,
     TableStar(Table),
