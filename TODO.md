@@ -18,6 +18,8 @@
   - Sub queries
     - In joins
   - Add all methods from https://docs.rs/diesel/1.4.4/diesel/query_dsl/trait.QueryDsl.html
+  - Common table expressions
+  - Renaming tables (maybe). Like `select from users u where u.id = 1`
 
 - API
   - Make `Filter` a struct with private internals
