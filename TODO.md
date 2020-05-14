@@ -11,21 +11,14 @@
     - EXCEPT [ ALL | DISTINCT ]
     - Window functions
   - Expression methods
-    - between
     - eq any (in)
-    - ge
-    - gt
+    - ne all (not in)
     - is not null
     - is null
-    - le
-    - lt
-    - ne
-    - ne all (not in)
+    - between
     - not between
   - Sub queries
     - In joins
-  - Select expression `SELECT 1 as one`
-  - Raw SQL nodes
   - Add all methods from https://docs.rs/diesel/1.4.4/diesel/query_dsl/trait.QueryDsl.html
 
 - API
