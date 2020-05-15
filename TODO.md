@@ -25,3 +25,7 @@
 - API
   - Make `Filter` a struct with private internals
   - Make `Selection` a struct with private internals
+
+Remove the need to specify type of the generic parameter in raw joins:
+`users::table.inner_join(Join::<users::table>::raw("INNER JOIN countries on countries.id = 1"))`
+                                ^^^^^^^^^^^^ this type
