@@ -590,9 +590,13 @@ fn select_count_column() {
 #[test]
 fn raw_sql_select() {
     let query = users::table
-        .inner_join(Join::raw("INNER JOIN countries on countries.id = 1"))
-        .join(Join::raw("left outer join countries on 1=1"))
-        .join(Join::raw("join users on 1=2"))
+        .inner_join(Join::<users::table>::raw(
+            "INNER JOIN countries on countries.id = 1",
+        ))
+        .join(Join::<users::table>::raw(
+            "left outer join countries on 1=1",
+        ))
+        .join(Join::<users::table>::raw("join users on 1=2"))
         .filter(Filter::raw("1 = 2 AND 1 not in (1, 2, 3)"))
         .group_by(Group::raw("users.id"))
         .having(Filter::raw("1 = 2"))
@@ -724,15 +728,9 @@ fn sub_queries() {
 
 #[test]
 fn distinct() {
-    let (sql, mut binds) = users::table
-        .distinct()
-        .select(users::star)
-        .to_sql();
+    let (sql, mut binds) = users::table.distinct().select(users::star).to_sql();
 
-    assert_eq!(
-        sql,
-        r#"SELECT DISTINCT "users".* FROM "users""#
-    );
+    assert_eq!(sql, r#"SELECT DISTINCT "users".* FROM "users""#);
     assert_eq!(binds.next(), None);
 }
 
@@ -753,10 +751,7 @@ fn distinct_on() {
 #[test]
 fn distinct_on_many() {
     let (sql, mut binds) = users::table
-        .distinct_on((
-            users::id,
-            users::name,
-        ))
+        .distinct_on((users::id, users::name))
         .select(users::star)
         .to_sql();
 
@@ -764,5 +759,20 @@ fn distinct_on_many() {
         sql,
         r#"SELECT DISTINCT ON ("users"."id", "users"."name") "users".* FROM "users""#
     );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn join_on_sub_query() {
+    let sub_query = countries::table.limit(10).select(countries::id);
+    let join = sub_query.alias("countries").on(countries::id.eq(users::country_id));
+
+    let (sql, mut binds) = users::table.join(join).select(users::star).to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT "users".* FROM "users" JOIN (SELECT "countries"."id" FROM "countries" LIMIT $1) "countries" ON "countries"."id" = "users"."country_id""#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }

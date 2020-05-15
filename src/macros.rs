@@ -33,11 +33,17 @@ macro_rules! table {
                 }
             }
 
-            impl From<table> for $crate::Query<table> {
+            impl From<table> for $crate::FromClause<table> {
                 fn from(t: table) -> Self {
-                    Self::from($crate::Table::from(t))
+                    $crate::FromClause::from($crate::Table::from(t))
                 }
             }
+
+            // impl From<table> for $crate::Query<table> {
+            //     fn from(t: table) -> Self {
+            //         Self::from($crate::Table::from(t))
+            //     }
+            // }
 
             #[derive(Copy, Clone)]
             pub struct star;

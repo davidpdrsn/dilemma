@@ -6,6 +6,7 @@ use std::fmt;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use write_sql::WriteSql;
+use join::CastVecJoin;
 
 #[cfg(test)]
 mod test;
@@ -83,7 +84,7 @@ impl WriteSql for &Column {
 #[derive(Debug, Clone)]
 pub struct Query<T> {
     from: FromClause<T>,
-    joins: Vec<Join>,
+    joins: Vec<Join<T>>,
     filter: Option<Filter>,
     group: Option<Group>,
     having: Option<Filter>,
@@ -113,7 +114,7 @@ impl<T> Query<T> {
 
         Query {
             from: from.cast_to::<K>(),
-            joins,
+            joins: joins.cast_to::<K>(),
             filter,
             group,
             having,
@@ -196,12 +197,12 @@ impl<T> Query<T> {
         self
     }
 
-    fn add_join(&mut self, join: JoinOn, kind: JoinKind) {
+    fn add_join(&mut self, join: JoinOn<T>, kind: JoinKind) {
         match join {
-            JoinOn::Known { table, filter } => {
+            JoinOn::Known { from, filter } => {
                 self.joins.push(Join::Known {
                     kind,
-                    table,
+                    from,
                     filter,
                 });
             }
@@ -368,14 +369,6 @@ impl<T> CollectBinds for Query<T> {
 
 impl CollectBinds for Table {
     fn collect_binds(&self, _: &mut BindsInternal) {}
-}
-
-impl CollectBinds for Vec<Join> {
-    fn collect_binds(&self, binds: &mut BindsInternal) {
-        for join in self {
-            join.collect_binds(binds)
-        }
-    }
 }
 
 pub trait IntoColumns {

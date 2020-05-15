@@ -10,11 +10,11 @@ pub trait QueryDsl<T> {
 
     fn or_filter(self, filter: impl Into<Filter>) -> Query<T>;
 
-    fn join(self, join: impl Into<JoinOn>) -> Query<T>;
+    fn join<K>(self, join: impl Into<JoinOn<K>>) -> Query<T>;
 
-    fn inner_join(self, join: impl Into<JoinOn>) -> Query<T>;
+    fn inner_join<K>(self, join: impl Into<JoinOn<K>>) -> Query<T>;
 
-    fn outer_join(self, join: impl Into<JoinOn>) -> Query<T>;
+    fn outer_join<K>(self, join: impl Into<JoinOn<K>>) -> Query<T>;
 
     fn group_by(self, group: impl Into<Group>) -> Query<T>;
 
@@ -88,21 +88,21 @@ where
         query
     }
 
-    fn inner_join(self, join: impl Into<JoinOn>) -> Query<K> {
+    fn inner_join<J>(self, join: impl Into<JoinOn<J>>) -> Query<K> {
         let mut query = self.into();
-        query.add_join(join.into(), JoinKind::Inner);
+        query.add_join(join.into().cast_to::<K>(), JoinKind::Inner);
         query
     }
 
-    fn join(self, join: impl Into<JoinOn>) -> Query<K> {
+    fn join<J>(self, join: impl Into<JoinOn<J>>) -> Query<K> {
         let mut query = self.into();
-        query.add_join(join.into(), JoinKind::Default);
+        query.add_join(join.into().cast_to::<K>(), JoinKind::Default);
         query
     }
 
-    fn outer_join(self, join: impl Into<JoinOn>) -> Query<K> {
+    fn outer_join<J>(self, join: impl Into<JoinOn<J>>) -> Query<K> {
         let mut query = self.into();
-        query.add_join(join.into(), JoinKind::Outer);
+        query.add_join(join.into().cast_to::<K>(), JoinKind::Outer);
         query
     }
 
@@ -246,7 +246,7 @@ where
             (None, None) => None,
         };
 
-        lhs.joins.extend(rhs.joins);
+        lhs.joins.extend(rhs.joins.cast_to());
 
         let limit = rhs.limit.or(lhs.limit);
         let offset = rhs.offset.or(lhs.offset);

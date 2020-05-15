@@ -1,29 +1,45 @@
 use crate::binds::BindCount;
 use crate::binds::{BindsInternal, CollectBinds};
-use crate::{filter::Filter, Table, WriteSql};
+use crate::from::FromClause;
+use crate::{filter::Filter, WriteSql};
+use extend::ext;
 use std::fmt::{self, Write};
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Join {
+#[derive(Debug, Clone)]
+pub enum Join<T> {
     Known {
         kind: JoinKind,
-        table: Table,
+        from: FromClause<T>,
         filter: Filter,
     },
     RawWithKind(String),
     Raw(String),
 }
 
-impl WriteSql for &Join {
+impl<T> Join<T> {
+    pub fn raw(sql: &str) -> JoinOn<T> {
+        JoinOn::Raw(sql.to_string())
+    }
+
+    pub fn cast_to<K>(self) -> Join<K> {
+        match self {
+            Join::Known { kind, from, filter } => Join::Known {
+                kind,
+                from: from.cast_to::<K>(),
+                filter,
+            },
+            Join::RawWithKind(sql) => Join::RawWithKind(sql),
+            Join::Raw(sql) => Join::Raw(sql),
+        }
+    }
+}
+
+impl<T> WriteSql for &Join<T> {
     fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Join::Known {
-                kind,
-                table,
-                filter,
-            } => {
+            Join::Known { kind, from, filter } => {
                 kind.write_sql(f, bind_count)?;
-                table.write_sql(f, bind_count)?;
+                from.write_sql(f, bind_count)?;
                 write!(f, " ON ")?;
                 filter.write_sql(f, bind_count)?;
             }
@@ -39,15 +55,15 @@ impl WriteSql for &Join {
     }
 }
 
-impl CollectBinds for Join {
+impl<T> CollectBinds for Join<T> {
     fn collect_binds(&self, binds: &mut BindsInternal) {
         match self {
             Join::Known {
                 kind: _,
-                table,
+                from,
                 filter,
             } => {
-                table.collect_binds(binds);
+                from.collect_binds(binds);
                 filter.collect_binds(binds);
             }
             Join::RawWithKind(_) => {}
@@ -56,13 +72,15 @@ impl CollectBinds for Join {
     }
 }
 
-impl Join {
-    pub fn raw(sql: &str) -> JoinOn {
-        JoinOn::Raw(sql.to_string())
+impl<T> CollectBinds for Vec<Join<T>> {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        for join in self {
+            join.collect_binds(binds)
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub enum JoinKind {
     Default,
     Inner,
@@ -80,24 +98,43 @@ impl WriteSql for &JoinKind {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum JoinOn {
-    Known { table: Table, filter: Filter },
+#[derive(Debug, Clone)]
+pub enum JoinOn<T> {
+    Known { from: FromClause<T>, filter: Filter },
     Raw(String),
 }
 
-pub trait JoinOnDsl {
-    fn on(self, filter: Filter) -> JoinOn;
+impl<T> JoinOn<T> {
+    pub fn cast_to<K>(self) -> JoinOn<K> {
+        match self {
+            JoinOn::Known { from, filter } => JoinOn::Known {
+                from: from.cast_to::<K>(),
+                filter,
+            },
+            JoinOn::Raw(sql) => JoinOn::Raw(sql),
+        }
+    }
 }
 
-impl<T> JoinOnDsl for T
+pub trait JoinOnDsl<T> {
+    fn on(self, filter: Filter) -> JoinOn<T>;
+}
+
+impl<T, K> JoinOnDsl<K> for T
 where
-    T: Into<Table>,
+    T: Into<FromClause<K>>,
 {
-    fn on(self, filter: Filter) -> JoinOn {
+    fn on(self, filter: Filter) -> JoinOn<K> {
         JoinOn::Known {
-            table: self.into(),
+            from: FromClause::from(self.into()),
             filter,
         }
+    }
+}
+
+#[ext(pub(crate), name = CastVecJoin)]
+impl<T> Vec<Join<T>> {
+    fn cast_to<K>(self) -> Vec<Join<K>> {
+        self.into_iter().map(|join| join.cast_to::<K>()).collect()
     }
 }
