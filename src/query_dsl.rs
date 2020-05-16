@@ -247,7 +247,7 @@ where
         let mut lhs = self.into();
         let rhs = other.into();
 
-        let filter = match (lhs.filter, rhs.filter) {
+        lhs.filter = match (lhs.filter, rhs.filter) {
             (Some(a), Some(b)) => Some(Filter::And(Box::new(a), Box::new(b))),
             (Some(a), None) => Some(a),
             (None, Some(b)) => Some(b),
@@ -257,27 +257,6 @@ where
         lhs.joins.extend(rhs.joins.cast_to::<K>());
         lhs.ctes.extend(rhs.ctes.cast_to::<K>());
 
-        let limit = rhs.limit.or(lhs.limit);
-        let offset = rhs.offset.or(lhs.offset);
-        let order = rhs.order.or(lhs.order);
-        let group = rhs.group.or(lhs.group);
-        let having = rhs.having.or(lhs.having);
-        let row_locking = lhs.row_locking.or(rhs.row_locking);
-        let distinct = lhs.distinct.or(rhs.distinct);
-
-        Query {
-            from: lhs.from,
-            ctes: lhs.ctes,
-            filter,
-            joins: lhs.joins,
-            group,
-            having,
-            order,
-            limit,
-            offset,
-            row_locking,
-            distinct,
-            _marker: lhs._marker,
-        }
+        lhs
     }
 }

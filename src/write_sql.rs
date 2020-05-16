@@ -9,7 +9,7 @@ pub trait WriteSql {
 impl<'a, I, T: 'a> WriteSql for I
 where
     I: Iterator<Item = &'a T>,
-    &'a T: WriteSql
+    &'a T: WriteSql,
 {
     fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         for col in self.with_position() {

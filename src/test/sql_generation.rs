@@ -262,10 +262,9 @@ fn merge_limit_rhs() {
 
     assert_eq!(
         query,
-        r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1 LIMIT $2"#
+        r#"SELECT "users".* FROM "users" WHERE "users"."id" = $1"#
     );
     assert_eq!(binds.next(), Some(Bind::I32(1)));
-    assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
 
@@ -278,7 +277,7 @@ fn merge_limit_both() {
         .to_sql();
 
     assert_eq!(query, r#"SELECT "users".* FROM "users" LIMIT $1"#);
-    assert_eq!(binds.next(), Some(Bind::I32(10)));
+    assert_eq!(binds.next(), Some(Bind::I32(9999)));
     assert_eq!(binds.next(), None);
 }
 

@@ -1,8 +1,8 @@
+use crate::binds::{BindCount, BindsInternal, CollectBinds};
 use crate::from::{CastVecSubQuery, SubQuery};
 use crate::write_sql::WriteSql;
 use itertools::{Itertools, Position};
 use std::fmt::{self, Write};
-use crate::binds::{CollectBinds, BindCount, BindsInternal};
 
 #[derive(Debug, Clone)]
 pub struct Ctes<T> {
@@ -32,7 +32,7 @@ impl<T> Ctes<T> {
 impl<T> WriteSql for &Ctes<T> {
     fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         if self.queries.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         write!(f, "WITH ")?;

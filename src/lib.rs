@@ -1,6 +1,7 @@
 #![forbid(unknown_lints)]
 
 use binds::{BindCount, BindsInternal, CollectBinds};
+use cte::Ctes;
 use from::CastVecSubQuery;
 use join::CastVecJoin;
 use row_locking::RowLocking;
@@ -8,7 +9,6 @@ use std::fmt;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use write_sql::WriteSql;
-use cte::Ctes;
 
 #[cfg(test)]
 mod test;
