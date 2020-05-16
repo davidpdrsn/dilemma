@@ -13,8 +13,6 @@
     - ne all (not in)
     - between
     - not between
-  - Sub queries
-    - In joins
   - Add all methods from https://docs.rs/diesel/1.4.4/diesel/query_dsl/trait.QueryDsl.html
   - Renaming tables (maybe). Like `select from users u where u.id = 1`
   - Raw SQL nodes with bind params
