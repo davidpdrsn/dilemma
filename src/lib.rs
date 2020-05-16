@@ -1,17 +1,20 @@
 #![forbid(unknown_lints)]
 
 use binds::{BindCount, BindsInternal, CollectBinds};
+use from::CastVecSubQuery;
+use join::CastVecJoin;
 use row_locking::RowLocking;
 use std::fmt;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use write_sql::WriteSql;
-use join::CastVecJoin;
+use cte::Ctes;
 
 #[cfg(test)]
 mod test;
 
 mod binds;
+mod cte;
 mod distinct;
 mod expr;
 mod filter;
@@ -84,6 +87,7 @@ impl WriteSql for &Column {
 #[derive(Debug, Clone)]
 pub struct Query<T> {
     from: FromClause<T>,
+    ctes: Ctes<T>,
     joins: Vec<Join<T>>,
     filter: Option<Filter>,
     group: Option<Group>,
@@ -100,6 +104,7 @@ impl<T> Query<T> {
     pub fn cast_to<K>(self) -> Query<K> {
         let Query {
             from,
+            ctes,
             joins,
             filter,
             group,
@@ -114,6 +119,7 @@ impl<T> Query<T> {
 
         Query {
             from: from.cast_to::<K>(),
+            ctes: ctes.cast_to::<K>(),
             joins: joins.cast_to::<K>(),
             filter,
             group,
@@ -200,16 +206,16 @@ impl<T> Query<T> {
     fn add_join(&mut self, join: JoinOn<T>, kind: JoinKind) {
         match join {
             JoinOn::Known { from, filter } => {
-                self.joins.push(Join::Known {
-                    kind,
-                    from,
-                    filter,
-                });
+                self.joins.push(Join::Known { kind, from, filter });
             }
             JoinOn::Raw(sql) => {
                 self.joins.push(Join::RawWithKind(sql));
             }
         }
+    }
+
+    fn add_cte<K>(&mut self, sub_query: SubQuery<K>) {
+        self.ctes.push(sub_query);
     }
 }
 
@@ -220,6 +226,7 @@ where
     fn from(from: K) -> Self {
         Self {
             from: from.into(),
+            ctes: Ctes::default(),
             filter: None,
             joins: Vec::new(),
             group: None,
@@ -251,6 +258,8 @@ impl<T> QueryWithSelect<T> {
 
     fn to_sql_string<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) {
         let result = (|| -> fmt::Result {
+            self.query.ctes.write_sql(f, bind_count)?;
+
             write!(f, "SELECT ")?;
 
             if let Some(distinct) = &self.query.distinct {
@@ -336,6 +345,7 @@ impl<T> CollectBinds for Box<QueryWithSelect<T>> {
 
 impl<T> CollectBinds for Query<T> {
     fn collect_binds(&self, binds: &mut BindsInternal) {
+        self.ctes.collect_binds(binds);
         self.from.collect_binds(binds);
         self.joins.collect_binds(binds);
 

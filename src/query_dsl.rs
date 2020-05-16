@@ -50,6 +50,8 @@ pub trait QueryDsl<T> {
 
     fn no_wait(self) -> Query<T>;
 
+    fn with<K>(self, sub_query: impl Into<SubQuery<K>>) -> Query<T>;
+
     fn merge<K>(self, other: impl Into<Query<K>>) -> Query<T>;
 }
 
@@ -235,6 +237,12 @@ where
         query
     }
 
+    fn with<J>(self, sub_query: impl Into<SubQuery<J>>) -> Query<K> {
+        let mut query = self.into();
+        query.add_cte(sub_query.into());
+        query
+    }
+
     fn merge<J>(self, other: impl Into<Query<J>>) -> Query<K> {
         let mut lhs = self.into();
         let rhs = other.into();
@@ -246,7 +254,8 @@ where
             (None, None) => None,
         };
 
-        lhs.joins.extend(rhs.joins.cast_to());
+        lhs.joins.extend(rhs.joins.cast_to::<K>());
+        lhs.ctes.extend(rhs.ctes.cast_to::<K>());
 
         let limit = rhs.limit.or(lhs.limit);
         let offset = rhs.offset.or(lhs.offset);
@@ -258,6 +267,7 @@ where
 
         Query {
             from: lhs.from,
+            ctes: lhs.ctes,
             filter,
             joins: lhs.joins,
             group,

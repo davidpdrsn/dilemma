@@ -765,13 +765,35 @@ fn distinct_on_many() {
 #[test]
 fn join_on_sub_query() {
     let sub_query = countries::table.limit(10).select(countries::id);
-    let join = sub_query.alias("countries").on(countries::id.eq(users::country_id));
+    let join = sub_query
+        .alias("countries")
+        .on(countries::id.eq(users::country_id));
 
     let (sql, mut binds) = users::table.join(join).select(users::star).to_sql();
 
     assert_eq!(
         sql,
         r#"SELECT "users".* FROM "users" JOIN (SELECT "countries"."id" FROM "countries" LIMIT $1) "countries" ON "countries"."id" = "users"."country_id""#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(10)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn common_table_expression() {
+    let (sql, mut binds) = users::table
+        .with(users::table.limit(10).select(users::star).alias("users"))
+        .with(
+            countries::table
+                .select(countries::id)
+                .alias("new_countries"),
+        )
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"WITH "users" AS (SELECT "users".* FROM "users" LIMIT $1), "new_countries" AS (SELECT "countries"."id" FROM "countries") SELECT "users".* FROM "users""#
     );
     assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);

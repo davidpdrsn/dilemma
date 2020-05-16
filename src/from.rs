@@ -3,6 +3,7 @@ use crate::write_sql::WriteSql;
 use crate::Query;
 use crate::QueryWithSelect;
 use crate::Table;
+use extend::ext;
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone)]
@@ -45,7 +46,7 @@ impl<T> CollectBinds for FromClause<T> {
     fn collect_binds(&self, binds: &mut BindsInternal) {
         match self {
             FromClause::Table(table) => table.collect_binds(binds),
-            FromClause::SubQuery(sub_query) => CollectBinds::collect_binds(&sub_query.query, binds),
+            FromClause::SubQuery(sub_query) => sub_query.collect_binds(binds),
         }
     }
 }
@@ -65,8 +66,8 @@ impl<T> IntoSubQuery<T> for QueryWithSelect<T> {
 
 #[derive(Debug, Clone)]
 pub struct SubQuery<T> {
-    query: Box<QueryWithSelect<T>>,
-    alias: String,
+    pub(crate) query: Box<QueryWithSelect<T>>,
+    pub(crate) alias: String,
 }
 
 impl<T> SubQuery<T> {
@@ -77,6 +78,21 @@ impl<T> SubQuery<T> {
             query: Box::new(query.cast_to::<K>()),
             alias,
         }
+    }
+}
+
+impl<T> CollectBinds for SubQuery<T> {
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        self.query.collect_binds(binds)
+    }
+}
+
+#[ext(pub(crate), name = CastVecSubQuery)]
+impl<T> Vec<SubQuery<T>> {
+    fn cast_to<K>(self) -> Vec<SubQuery<K>> {
+        self.into_iter()
+            .map(|sub_query| sub_query.cast_to::<K>())
+            .collect()
     }
 }
 
