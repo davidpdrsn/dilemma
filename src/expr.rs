@@ -28,6 +28,10 @@ pub trait ExprDsl<SqlType>: Sized {
     fn le<Rhs>(self, rhs: Rhs) -> Filter
     where
         Rhs: IntoExpr<SqlType = SqlType>;
+
+    fn is_not_null(self) -> Filter;
+
+    fn is_null(self) -> Filter;
 }
 
 impl<T, SqlType> ExprDsl<SqlType> for T
@@ -97,6 +101,20 @@ where
             lhs: self.into_expr(),
             op: BinOp::Le,
             rhs: rhs.into_expr(),
+        }
+    }
+
+    fn is_not_null(self) -> Filter {
+        Filter::UnOp {
+            expr: self.into_expr(),
+            op: UnOp::NotNull,
+        }
+    }
+
+    fn is_null(self) -> Filter {
+        Filter::UnOp {
+            expr: self.into_expr(),
+            op: UnOp::Null,
         }
     }
 }
@@ -177,6 +195,21 @@ impl WriteSql for &BinOp {
             BinOp::Gt => write!(f, " > "),
             BinOp::Lt => write!(f, " < "),
             BinOp::Le => write!(f, " <= "),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum UnOp {
+    NotNull,
+    Null,
+}
+
+impl WriteSql for &UnOp {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+        match self {
+            UnOp::NotNull => write!(f, " IS NOT NULL"),
+            UnOp::Null => write!(f, " IS NULL"),
         }
     }
 }

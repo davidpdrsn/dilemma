@@ -815,3 +815,31 @@ fn multiple_common_table_expression() {
     );
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn not_null() {
+    let (sql, mut binds) = users::table
+        .filter(users::name.is_not_null())
+        .select(star())
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT * FROM "users" WHERE "users"."name" IS NOT NULL"#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn null() {
+    let (sql, mut binds) = users::table
+        .filter(users::name.is_null())
+        .select(star())
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT * FROM "users" WHERE "users"."name" IS NULL"#
+    );
+    assert_eq!(binds.next(), None);
+}

@@ -33,7 +33,7 @@ pub mod sql_types;
 
 pub use binds::{Bind, Binds};
 pub use distinct::Distinct;
-pub use expr::{BinOp, Expr, ExprDsl, IntoExpr};
+pub use expr::{BinOp, UnOp, Expr, ExprDsl, IntoExpr};
 pub use filter::Filter;
 pub use from::{from, FromClause, IntoSubQuery, SubQuery};
 pub use group::Group;

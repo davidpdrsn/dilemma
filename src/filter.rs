@@ -1,11 +1,12 @@
 use crate::binds::BindCount;
 use crate::binds::{BindsInternal, CollectBinds};
-use crate::{expr::Expr, BinOp, WriteSql};
+use crate::{expr::Expr, BinOp, UnOp, WriteSql};
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Filter {
     BinOp { lhs: Expr, op: BinOp, rhs: Expr },
+    UnOp { expr: Expr, op: UnOp },
     And(Box<Filter>, Box<Filter>),
     Or(Box<Filter>, Box<Filter>),
     Raw(String),
@@ -18,6 +19,10 @@ impl WriteSql for &Filter {
                 lhs.write_sql(f, bind_count)?;
                 op.write_sql(f, bind_count)?;
                 rhs.write_sql(f, bind_count)?;
+            }
+            Filter::UnOp { expr, op } => {
+                expr.write_sql(f, bind_count)?;
+                op.write_sql(f, bind_count)?;
             }
             Filter::And(lhs, rhs) => {
                 lhs.write_sql(f, bind_count)?;
@@ -59,6 +64,9 @@ impl CollectBinds for Filter {
             Filter::BinOp { lhs, op: _, rhs } => {
                 lhs.collect_binds(binds);
                 rhs.collect_binds(binds);
+            }
+            Filter::UnOp { expr, op: _ } => {
+                expr.collect_binds(binds);
             }
             Filter::And(lhs, rhs) => {
                 lhs.collect_binds(binds);

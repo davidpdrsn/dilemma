@@ -11,8 +11,6 @@
   - Expression methods
     - eq any (in)
     - ne all (not in)
-    - is not null
-    - is null
     - between
     - not between
   - Sub queries
