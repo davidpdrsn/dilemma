@@ -9,6 +9,14 @@ pub struct Ctes<T> {
     queries: Vec<SubQuery<T>>,
 }
 
+impl<T, K> From<SubQuery<K>> for Ctes<T> {
+    fn from(sub_query: SubQuery<K>) -> Self {
+        Ctes {
+            queries: vec![sub_query.cast_to()],
+        }
+    }
+}
+
 impl<T> Default for Ctes<T> {
     fn default() -> Self {
         Ctes {
@@ -22,10 +30,6 @@ impl<T> Ctes<T> {
         Ctes {
             queries: self.queries.cast_to::<K>(),
         }
-    }
-
-    pub fn push<K>(&mut self, sub_query: SubQuery<K>) {
-        self.queries.push(sub_query.cast_to::<T>());
     }
 }
 
@@ -81,3 +85,62 @@ impl<T> Extend<SubQuery<T>> for Ctes<T> {
         self.queries.extend(iter.into_iter())
     }
 }
+
+#[allow(warnings)]
+impl<A, B> Into<Ctes<B>> for (A,)
+where
+    A: Into<Ctes<B>>,
+{
+    fn into(self) -> Ctes<B> {
+        self.0.into()
+    }
+}
+
+macro_rules! impl_into_ctes {
+    (
+        $first:ident, $second:ident,
+    ) => {
+        #[allow(warnings)]
+        impl<A, $first, $second> Into<Ctes<A>> for ($first, $second)
+        where
+            $first: Into<Ctes<A>>,
+            $second: Into<Ctes<A>>,
+        {
+            fn into(self) -> Ctes<A> {
+                let ($first, $second) = self;
+                let mut ctes = Ctes::default();
+                ctes.extend($first.into().cast_to::<A>());
+                ctes.extend($second.into().cast_to::<A>());
+                ctes
+            }
+        }
+    };
+
+    (
+        $head:ident, $($tail:ident),*,
+    ) => {
+        #[allow(warnings)]
+        impl<A, $head, $($tail),*> Into<Ctes<A>> for ($head, $($tail),*)
+        where
+            $head: Into<Ctes<A>>,
+            $($tail: Into<Ctes<A>>),*
+        {
+            fn into(self) -> Ctes<A> {
+                let ($head, $($tail),*) = self;
+                let mut ctes = Ctes::default();
+                ctes.extend($head.into().cast_to::<A>());
+                $(
+                    ctes.extend($tail.into().cast_to::<A>());
+                )*
+                ctes
+            }
+        }
+
+        impl_into_ctes!($($tail),*,);
+    };
+}
+
+impl_into_ctes!(
+    T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21,
+    T22, T23, T24, T25, T26, T27, T28, T29, T30, T31, T32,
+);

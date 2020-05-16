@@ -797,3 +797,21 @@ fn common_table_expression() {
     assert_eq!(binds.next(), Some(Bind::I32(10)));
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn multiple_common_table_expression() {
+    let (sql, mut binds) = users::table
+        .with((
+            countries::table.select(countries::id).alias("one"),
+            users::table.select(users::id).alias("two"),
+            countries::table.select(countries::id).alias("three"),
+        ))
+        .select(users::star)
+        .to_sql();
+
+    assert_eq!(
+        sql,
+        r#"WITH "one" AS (SELECT "countries"."id" FROM "countries"), "two" AS (SELECT "users"."id" FROM "users"), "three" AS (SELECT "countries"."id" FROM "countries") SELECT "users".* FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}

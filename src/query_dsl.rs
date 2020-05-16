@@ -50,7 +50,7 @@ pub trait QueryDsl<T> {
 
     fn no_wait(self) -> Query<T>;
 
-    fn with<K>(self, sub_query: impl Into<SubQuery<K>>) -> Query<T>;
+    fn with(self, ctes: impl Into<Ctes<T>>) -> Query<T>;
 
     fn merge<K>(self, other: impl Into<Query<K>>) -> Query<T>;
 }
@@ -237,9 +237,9 @@ where
         query
     }
 
-    fn with<J>(self, sub_query: impl Into<SubQuery<J>>) -> Query<K> {
+    fn with(self, ctes: impl Into<Ctes<K>>) -> Query<K> {
         let mut query = self.into();
-        query.add_cte(sub_query.into());
+        query.ctes.extend(ctes.into());
         query
     }
 

@@ -1,7 +1,6 @@
 #![forbid(unknown_lints)]
 
 use binds::{BindCount, BindsInternal, CollectBinds};
-use cte::Ctes;
 use from::CastVecSubQuery;
 use join::CastVecJoin;
 use row_locking::RowLocking;
@@ -44,6 +43,7 @@ pub use offset::Offset;
 pub use order::{NullsPosition, NullsPositionDsl, Order, OrderDsl};
 pub use query_dsl::QueryDsl;
 pub use select::{count, star, Select, Selection};
+pub use cte::Ctes;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -86,8 +86,8 @@ impl WriteSql for &Column {
 
 #[derive(Debug, Clone)]
 pub struct Query<T> {
-    from: FromClause<T>,
     ctes: Ctes<T>,
+    from: FromClause<T>,
     joins: Vec<Join<T>>,
     filter: Option<Filter>,
     group: Option<Group>,
@@ -203,6 +203,11 @@ impl<T> Query<T> {
         self
     }
 
+    pub fn remove_ctes(mut self) -> Self {
+        self.ctes = Ctes::default();
+        self
+    }
+
     fn add_join(&mut self, join: JoinOn<T>, kind: JoinKind) {
         match join {
             JoinOn::Known { from, filter } => {
@@ -212,10 +217,6 @@ impl<T> Query<T> {
                 self.joins.push(Join::RawWithKind(sql));
             }
         }
-    }
-
-    fn add_cte<K>(&mut self, sub_query: SubQuery<K>) {
-        self.ctes.push(sub_query);
     }
 }
 
