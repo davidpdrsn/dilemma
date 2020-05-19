@@ -16,8 +16,6 @@
 
 - API
   - Make all enum types opaque. We don't want to accidentally make users depend on the enum names:
-    - `src/offset.rs`
-    - `src/limit.rs`
     - `src/join.rs`
     - `src/distinct.rs`
     - `src/order.rs`

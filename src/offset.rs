@@ -5,21 +5,15 @@ use std::fmt::{self, Write};
 #[derive(Debug, Clone)]
 pub struct Offset(pub(crate) OffsetI);
 
-#[derive(Debug, Clone)]
-pub(crate) enum OffsetI {
-    Count(i32),
-    Raw(String),
+impl Into<Offset> for OffsetI {
+    fn into(self) -> Offset {
+        Offset(self)
+    }
 }
 
 impl Offset {
     pub fn raw(sql: &str) -> Self {
         OffsetI::Raw(sql.to_string()).into()
-    }
-}
-
-impl Into<Offset> for OffsetI {
-    fn into(self) -> Offset {
-        Offset(self)
     }
 }
 
@@ -30,6 +24,12 @@ where
     fn from(count: T) -> Self {
         OffsetI::Count(count.into()).into()
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum OffsetI {
+    Count(i32),
+    Raw(String),
 }
 
 impl WriteSql for &OffsetI {

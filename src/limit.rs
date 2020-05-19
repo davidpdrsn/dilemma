@@ -3,14 +3,23 @@ use crate::WriteSql;
 use std::fmt::{self, Write};
 
 #[derive(Debug, Clone)]
-pub enum Limit {
+pub struct Limit(pub(crate) LimitI);
+
+impl Into<Limit> for LimitI {
+    fn into(self) -> Limit {
+        Limit(self)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum LimitI {
     Count(i32),
     Raw(String),
 }
 
 impl Limit {
     pub fn raw(sql: &str) -> Self {
-        Self::Raw(sql.to_string())
+        LimitI::Raw(sql.to_string()).into()
     }
 }
 
@@ -19,26 +28,26 @@ where
     T: Into<i32>,
 {
     fn from(count: T) -> Self {
-        Limit::Count(count.into())
+        LimitI::Count(count.into()).into()
     }
 }
 
-impl WriteSql for &Limit {
+impl WriteSql for &LimitI {
     fn write_sql<W: Write>(self, f: &mut W, bind_count: &mut BindCount) -> fmt::Result {
         match self {
-            Limit::Count(_) => bind_count.write_sql(f),
-            Limit::Raw(sql) => write!(f, "{}", sql),
+            LimitI::Count(_) => bind_count.write_sql(f),
+            LimitI::Raw(sql) => write!(f, "{}", sql),
         }
     }
 }
 
-impl CollectBinds for Limit {
+impl CollectBinds for LimitI {
     fn collect_binds(&self, binds: &mut BindsInternal) {
         match self {
-            Limit::Count(count) => {
+            LimitI::Count(count) => {
                 binds.push(Bind::I32(*count));
             }
-            Limit::Raw(_) => {}
+            LimitI::Raw(_) => {}
         }
     }
 }

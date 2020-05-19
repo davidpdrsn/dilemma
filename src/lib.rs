@@ -1,13 +1,14 @@
 #![forbid(unknown_lints)]
 
 use binds::{BindCount, BindsInternal, CollectBinds};
-use from::CastVecSubQuery;
 use join::CastVecJoin;
 use row_locking::RowLocking;
 use std::fmt;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use write_sql::WriteSql;
+
+mod macros;
 
 #[cfg(test)]
 mod test;
@@ -21,7 +22,6 @@ mod from;
 mod group;
 mod join;
 mod limit;
-mod macros;
 mod offset;
 mod order;
 mod query_dsl;
@@ -314,7 +314,7 @@ impl<T> QueryWithSelect<T> {
 
             if let Some(limit) = &self.query.limit {
                 write!(f, " LIMIT ")?;
-                limit.write_sql(f, bind_count)?;
+                limit.0.write_sql(f, bind_count)?;
             }
 
             if let Some(offset) = &self.query.offset {
@@ -392,7 +392,7 @@ impl<T> CollectBinds for Query<T> {
         }
 
         if let Some(limit) = &self.limit {
-            limit.collect_binds(binds);
+            limit.0.collect_binds(binds);
         }
 
         if let Some(offset) = &self.offset {
