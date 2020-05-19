@@ -15,6 +15,16 @@
   - Raw SQL nodes with bind params
 
 - API
-  - Make `Filter` a struct with private internals
-  - Make `Selection` a struct with private internals
-  - Merge `WriteSql` and `CollectBinds` traits? I guess it wouldn't make sense to implement one without implementing the other as well?
+  - Make all enum types opaque. We don't want to accidentally make users depend on the enum names:
+    - `src/offset.rs`
+    - `src/limit.rs`
+    - `src/join.rs`
+    - `src/distinct.rs`
+    - `src/order.rs`
+    - `src/lib.rs`
+    - `src/from.rs`
+    - `src/filter.rs`
+    - `src/expr.rs`
+    - `src/group.rs`
+    - `src/select.rs`
+    - `src/binds.rs`

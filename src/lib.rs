@@ -319,7 +319,7 @@ impl<T> QueryWithSelect<T> {
 
             if let Some(offset) = &self.query.offset {
                 write!(f, " OFFSET ")?;
-                offset.write_sql(f, bind_count)?;
+                offset.0.write_sql(f, bind_count)?;
             }
 
             self.query.row_locking.write_sql(f, bind_count)?;
@@ -396,7 +396,7 @@ impl<T> CollectBinds for Query<T> {
         }
 
         if let Some(offset) = &self.offset {
-            offset.collect_binds(binds);
+            offset.0.collect_binds(binds);
         }
 
         self.row_locking.collect_binds(binds);
