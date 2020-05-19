@@ -888,3 +888,25 @@ fn union_distinct() {
     assert_eq!(binds.next(), Some(Bind::I32(1)));
     assert_eq!(binds.next(), None);
 }
+
+#[test]
+fn explain() {
+    let (sql, mut binds) = users::table.explain().select(star()).to_sql();
+
+    assert_eq!(
+        sql,
+        r#"EXPLAIN SELECT * FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn explain_analyze() {
+    let (sql, mut binds) = users::table.explain_analyze().select(star()).to_sql();
+
+    assert_eq!(
+        sql,
+        r#"EXPLAIN ANALYZE SELECT * FROM "users""#
+    );
+    assert_eq!(binds.next(), None);
+}

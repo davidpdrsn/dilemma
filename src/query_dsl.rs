@@ -52,6 +52,10 @@ pub trait QueryDsl<T> {
 
     fn with(self, ctes: impl Into<Ctes<T>>) -> Query<T>;
 
+    fn explain(self) -> Query<T>;
+
+    fn explain_analyze(self) -> Query<T>;
+
     fn merge<K>(self, other: impl Into<Query<K>>) -> Query<T>;
 }
 
@@ -240,6 +244,18 @@ where
     fn with(self, ctes: impl Into<Ctes<K>>) -> Query<K> {
         let mut query = self.into();
         query.ctes.extend(ctes.into());
+        query
+    }
+
+    fn explain(self) -> Query<K> {
+        let mut query = self.into();
+        query.explain = Some(Explain::Default);
+        query
+    }
+
+    fn explain_analyze(self) -> Query<K> {
+        let mut query = self.into();
+        query.explain = Some(Explain::Analyze);
         query
     }
 

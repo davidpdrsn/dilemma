@@ -97,6 +97,7 @@ pub struct Query<T> {
     offset: Option<Offset>,
     row_locking: RowLocking,
     distinct: Option<Distinct>,
+    explain: Option<Explain>,
     _marker: PhantomData<T>,
 }
 
@@ -114,6 +115,7 @@ impl<T> Query<T> {
             offset,
             row_locking,
             distinct,
+            explain,
             _marker,
         } = self;
 
@@ -129,6 +131,7 @@ impl<T> Query<T> {
             offset,
             row_locking,
             distinct,
+            explain,
             _marker: PhantomData,
         }
     }
@@ -208,6 +211,11 @@ impl<T> Query<T> {
         self
     }
 
+    pub fn remove_explain(mut self) -> Self {
+        self.explain = None;
+        self
+    }
+
     fn add_join(&mut self, join: JoinOn<T>, kind: JoinKind) {
         match join {
             JoinOn::Known { from, filter } => {
@@ -237,6 +245,7 @@ where
             offset: None,
             distinct: None,
             row_locking: RowLocking::new(),
+            explain: None,
             _marker: PhantomData,
         }
     }
@@ -261,6 +270,10 @@ impl<T> QueryWithSelect<T> {
 
     fn to_sql_string<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) {
         let result = (|| -> fmt::Result {
+            if let Some(explain) = self.query.explain {
+                explain.write_sql(f, bind_count)?;
+            }
+
             self.query.ctes.write_sql(f, bind_count)?;
 
             write!(f, "SELECT ")?;
@@ -534,5 +547,20 @@ impl<T> Union<T> {
 
     pub fn union_distinct<K>(self, other: QueryWithSelect<K>) -> Union<T> {
         Union::And(UnionKind::Distinct, Box::new(self), other.cast_to())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Explain {
+    Default,
+    Analyze,
+}
+
+impl WriteSql for Explain {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+        match self {
+            Explain::Default => write!(f, "EXPLAIN "),
+            Explain::Analyze => write!(f, "EXPLAIN ANALYZE "),
+        }
     }
 }

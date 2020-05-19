@@ -2,8 +2,6 @@
 
 - More query methods
   - Select query parts
-    - EXPLAIN
-    - EXPLAIN ANALYZE
     - INTERSECT [ ALL | DISTINCT ]
     - EXCEPT [ ALL | DISTINCT ]
     - Window functions
