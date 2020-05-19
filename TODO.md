@@ -4,7 +4,6 @@
   - Select query parts
     - EXPLAIN
     - EXPLAIN ANALYZE
-    - UNION [ ALL | DISTINCT ]
     - INTERSECT [ ALL | DISTINCT ]
     - EXCEPT [ ALL | DISTINCT ]
     - Window functions

@@ -837,9 +837,54 @@ fn null() {
         .select(star())
         .to_sql();
 
+    assert_eq!(sql, r#"SELECT * FROM "users" WHERE "users"."name" IS NULL"#);
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn union() {
+    let query = users::table.filter(users::id.eq(1)).select(star());
+    let query = query.clone().union(query.clone()).union(query);
+    let (sql, mut binds) = query.to_sql();
+
     assert_eq!(
         sql,
-        r#"SELECT * FROM "users" WHERE "users"."name" IS NULL"#
+        r#"SELECT * FROM "users" WHERE "users"."id" = $1 UNION SELECT * FROM "users" WHERE "users"."id" = $2 UNION SELECT * FROM "users" WHERE "users"."id" = $3"#
     );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn union_all() {
+    let query = users::table.filter(users::id.eq(1)).select(star());
+    let query = query.clone().union_all(query.clone()).union(query);
+    let (sql, mut binds) = query.to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT * FROM "users" WHERE "users"."id" = $1 UNION ALL SELECT * FROM "users" WHERE "users"."id" = $2 UNION SELECT * FROM "users" WHERE "users"."id" = $3"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), None);
+}
+
+#[test]
+fn union_distinct() {
+    let query = users::table.filter(users::id.eq(1)).select(star());
+    let query = query.clone().union_all(query.clone()).union_distinct(query);
+    let (sql, mut binds) = query.to_sql();
+
+    assert_eq!(
+        sql,
+        r#"SELECT * FROM "users" WHERE "users"."id" = $1 UNION ALL SELECT * FROM "users" WHERE "users"."id" = $2 UNION DISTINCT SELECT * FROM "users" WHERE "users"."id" = $3"#
+    );
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
+    assert_eq!(binds.next(), Some(Bind::I32(1)));
     assert_eq!(binds.next(), None);
 }

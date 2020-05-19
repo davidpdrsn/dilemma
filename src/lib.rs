@@ -32,8 +32,9 @@ mod write_sql;
 pub mod sql_types;
 
 pub use binds::{Bind, Binds};
+pub use cte::Ctes;
 pub use distinct::Distinct;
-pub use expr::{BinOp, UnOp, Expr, ExprDsl, IntoExpr};
+pub use expr::{BinOp, Expr, ExprDsl, IntoExpr, UnOp};
 pub use filter::Filter;
 pub use from::{from, FromClause, IntoSubQuery, SubQuery};
 pub use group::Group;
@@ -43,7 +44,6 @@ pub use offset::Offset;
 pub use order::{NullsPosition, NullsPositionDsl, Order, OrderDsl};
 pub use query_dsl::QueryDsl;
 pub use select::{count, star, Select, Selection};
-pub use cte::Ctes;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Table {
@@ -253,8 +253,10 @@ impl<T> QueryWithSelect<T> {
         let mut bind_count = BindCount::new();
         let mut sql = String::new();
         self.to_sql_string(&mut sql, &mut bind_count);
-        let binds = self.collect_binds(&mut bind_count);
-        (sql, binds)
+
+        let mut binds = BindsInternal::with_capacity(bind_count.count());
+        self.collect_binds(&mut binds);
+        (sql, Binds::from(binds))
     }
 
     fn to_sql_string<W: Write>(&self, f: &mut W, bind_count: &mut BindCount) {
@@ -315,10 +317,8 @@ impl<T> QueryWithSelect<T> {
         result.expect("WriteSql should never fail");
     }
 
-    fn collect_binds(&self, bind_count: &mut BindCount) -> Binds {
-        let mut binds = BindsInternal::with_capacity(bind_count.count());
-        self.query.collect_binds(&mut binds);
-        Binds::from(binds)
+    fn collect_binds(&self, binds: &mut BindsInternal) {
+        self.query.collect_binds(binds);
     }
 
     pub fn cast_to<K>(self) -> QueryWithSelect<K> {
@@ -328,6 +328,18 @@ impl<T> QueryWithSelect<T> {
             query: query.cast_to::<K>(),
             selection,
         }
+    }
+
+    pub fn union<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::Pair(UnionKind::Default, self, other.cast_to())
+    }
+
+    pub fn union_all<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::Pair(UnionKind::All, self, other.cast_to())
+    }
+
+    pub fn union_distinct<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::Pair(UnionKind::Distinct, self, other.cast_to())
     }
 }
 
@@ -447,3 +459,80 @@ impl_into_columns!(
     T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21,
     T22, T23, T24, T25, T26, T27, T28, T29, T30, T31, T32,
 );
+
+#[derive(Debug)]
+pub enum UnionKind {
+    Default,
+    All,
+    Distinct,
+}
+
+#[derive(Debug)]
+pub enum Union<T> {
+    Pair(UnionKind, QueryWithSelect<T>, QueryWithSelect<T>),
+    And(UnionKind, Box<Union<T>>, QueryWithSelect<T>),
+}
+
+impl WriteSql for &UnionKind {
+    fn write_sql<W: Write>(self, f: &mut W, _: &mut BindCount) -> fmt::Result {
+        match self {
+            UnionKind::Default => write!(f, " UNION "),
+            UnionKind::All => write!(f, " UNION ALL "),
+            UnionKind::Distinct => write!(f, " UNION DISTINCT "),
+        }
+    }
+}
+
+impl<T> Union<T> {
+    pub fn to_sql(self) -> (String, Binds) {
+        let mut bind_count = BindCount::new();
+        let mut sql = String::new();
+
+        self.to_sql_recurs(&mut sql, &mut bind_count);
+
+        let mut binds = BindsInternal::with_capacity(bind_count.count());
+        self.collect_binds_recurs(&mut binds);
+
+        (sql, Binds::from(binds))
+    }
+
+    fn to_sql_recurs(&self, sql: &mut String, bind_count: &mut BindCount) {
+        match self {
+            Union::Pair(kind, lhs, rhs) => {
+                lhs.to_sql_string(sql, bind_count);
+                kind.write_sql(sql, bind_count).unwrap();
+                rhs.to_sql_string(sql, bind_count);
+            }
+            Union::And(kind, head, tail) => {
+                head.to_sql_recurs(sql, bind_count);
+                kind.write_sql(sql, bind_count).unwrap();
+                tail.to_sql_string(sql, bind_count);
+            }
+        }
+    }
+
+    fn collect_binds_recurs(&self, binds: &mut BindsInternal) {
+        match self {
+            Union::Pair(_, lhs, rhs) => {
+                lhs.collect_binds(binds);
+                rhs.collect_binds(binds);
+            }
+            Union::And(_, head, tail) => {
+                head.collect_binds_recurs(binds);
+                tail.collect_binds(binds);
+            }
+        }
+    }
+
+    pub fn union<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::And(UnionKind::Default, Box::new(self), other.cast_to())
+    }
+
+    pub fn union_all<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::And(UnionKind::All, Box::new(self), other.cast_to())
+    }
+
+    pub fn union_distinct<K>(self, other: QueryWithSelect<K>) -> Union<T> {
+        Union::And(UnionKind::Distinct, Box::new(self), other.cast_to())
+    }
+}
