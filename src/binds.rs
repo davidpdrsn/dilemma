@@ -70,5 +70,4 @@ impl From<BindsInternal> for Binds {
 pub enum Bind {
     String(String),
     I32(i32),
-    U64(u64),
 }

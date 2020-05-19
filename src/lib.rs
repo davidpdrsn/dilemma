@@ -29,6 +29,7 @@ mod row_locking;
 mod select;
 mod write_sql;
 
+pub mod integrations;
 pub mod sql_types;
 
 pub use binds::{Bind, Binds};
