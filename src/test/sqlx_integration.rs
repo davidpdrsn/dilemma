@@ -1,24 +1,22 @@
-// use sqlx::{PgPool, Postgres};
 // use crate::*;
+// use sqlx::{PgPool, Postgres};
 
 // table! {
 //     users {
-//         id -> Integer,
-//         name -> Text,
-//         country_id -> Integer,
+//         username -> Text,
 //     }
 // }
 
-// #[allow(warnings)]
-// fn foo() {
-//     let pool: PgPool = todo!();
+// #[derive(Debug, sqlx::FromRow)]
+// struct User {
+//     username: String,
+// }
 
-//     async {
-//         users::table
-//             .filter(users::id.eq(1))
-//             .select(users::star)
-//             .execute(&pool)
-//             .await
-//             .unwrap();
-//     };
+// #[async_std::test]
+// async fn foo() {
+//     let pool: PgPool = PgPool::new("postgres://localhost/witter").await.unwrap();
+//     let users = users::table.select(star()).fetch_all_as::<User, _>(&pool).await;
+
+//     dbg!(&users);
+//     assert_eq!(users.len(), 1);
 // }
