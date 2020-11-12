@@ -1,50 +1,66 @@
-#![allow(unused_imports)]
-
 use crate::binds::{Bind, Binds};
-use crate::Query;
 use crate::QueryWithSelect;
-use futures::future::BoxFuture;
-use futures::stream::Stream;
-use sqlx::arguments::Arguments;
-use sqlx::cursor::Cursor;
-use sqlx::executor::RefExecutor;
-use sqlx::postgres::{PgPool, PgQueryAs, PgRow};
+use sqlx::database::HasArguments;
 use sqlx::prelude::FromRow;
-use sqlx::prelude::Row;
-use sqlx::{encode::Encode, Database, Error, Execute, Executor, Type};
-use sqlx::{query, query_as, Postgres};
-use std::future::Future;
-use std::marker::PhantomData;
-use std::pin::Pin;
+use sqlx::query_as;
+use sqlx::IntoArguments;
+use sqlx::{encode::Encode, Database, Executor};
 
 impl<T> QueryWithSelect<T> {
-    pub async fn fetch_all_as<'e, R, E>(self, executor: E) -> Vec<R>
+    pub async fn fetch_all_as<'c, O, E, DB>(self, executor: E) -> Vec<O>
     where
-        E: 'e + Send + RefExecutor<'e, Database = Postgres>,
-        R: 'e + Send + Unpin + for<'c> FromRow<'c, PgRow<'c>>,
+        O: for<'r> FromRow<'r, DB::Row> + Send + Unpin,
+        E: Executor<'c, Database = DB>,
+        DB: Database,
+        String: for<'q> Encode<'q, DB>,
+        i32: for<'q> Encode<'q, DB>,
+        for<'q> <DB as HasArguments<'q>>::Arguments: IntoArguments<'q, DB>,
     {
         let (sql, binds): (String, Binds) = self.to_sql();
-        fetch_all_raw::<R, _>(&sql, binds, executor).await
+
+        let mut query = query_as::<DB, O>(&sql);
+
+        for bind in binds {
+            match bind {
+                Bind::String(s) => {
+                    query = query.bind(s);
+                }
+                Bind::I32(i) => {
+                    query = query.bind(i);
+                }
+            }
+        }
+
+        query.fetch_all(executor).await.unwrap()
     }
 }
 
-async fn fetch_all_raw<'q, R, E>(sql: &'q str, binds: Binds, executor: E) -> Vec<R>
-where
-    E: 'q + Send + RefExecutor<'q, Database = Postgres>,
-    R: 'q + Send + Unpin + for<'c> FromRow<'c, PgRow<'c>>,
-{
-    let mut query = sqlx::query_as::<_, R>(sql);
+#[cfg(test)]
+mod test {
+    #[allow(unused_imports)]
+    use super::*;
+    use crate::*;
+    use sqlx::PgPool;
 
-    for bind in binds {
-        match bind {
-            Bind::String(s) => {
-                query = query.bind(s);
-            }
-            Bind::I32(i) => {
-                query = query.bind(i);
-            }
+    table! {
+        users {
+            id -> Integer,
+            username -> Text,
         }
     }
 
-    query.fetch_all(executor).await.unwrap()
+    #[async_std::test]
+    async fn test_something() {
+        let pool = PgPool::new("postgres://localhost/witter").await.unwrap();
+
+        #[derive(sqlx::FromRow)]
+        struct User {
+            id: i32,
+            username: String,
+        }
+
+        users::table
+            .select(users::star)
+            .fetch_all_as::<User, _, _>(&pool);
+    }
 }
